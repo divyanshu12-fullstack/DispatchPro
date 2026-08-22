@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-async function connectDB() {
+export async function connectDB() {
   const uri = process.env.MONGO_URI;
 
   if (!uri) {
@@ -31,5 +31,3 @@ async function connectDB() {
     console.warn('[db] Disconnected from MongoDB');
   });
 }
-
-module.exports = connectDB;

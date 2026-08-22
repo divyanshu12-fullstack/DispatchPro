@@ -1,10 +1,10 @@
-require('dotenv').config();
+import 'dotenv/config';
 
-const createApp = require('./app');
-const connectDB = require('./config/db');
+import { createApp } from './app.js';
+import { connectDB } from './config/db.js';
 
 function assertRequiredEnv() {
-  const required = ['MONGO_URI', 'JWT_SECRET'];
+  const required = ['MONGO_URI', 'JWT_SECRET', 'CORS_ORIGIN'];
   const missing = required.filter((k) => !process.env[k] || !String(process.env[k]).trim());
   if (missing.length) {
     throw new Error(
@@ -39,7 +39,6 @@ async function bootstrap() {
       console.log('[server] HTTP server closed.');
       process.exit(0);
     });
-    // Hard exit if shutdown takes too long.
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));

@@ -1,10 +1,10 @@
-const jwt = require('jsonwebtoken');
-const ApiError = require('../utils/ApiError');
+import jwt from 'jsonwebtoken';
+import { ApiError } from '../utils/ApiError.js';
 
 // Expected JWT payload: { sub: <userId>, role, email, iat, exp }.
 // Downstream code reads `req.user` only — never `req.body.userId` — to satisfy
 // the "never trust role/user IDs from the client" rule.
-function authenticate(req, _res, next) {
+export function authenticate(req, _res, next) {
   const header = req.headers.authorization || '';
 
   if (!header.startsWith('Bearer ')) {
@@ -28,5 +28,3 @@ function authenticate(req, _res, next) {
     return next(ApiError.unauthorized('Invalid or expired token'));
   }
 }
-
-module.exports = { authenticate };

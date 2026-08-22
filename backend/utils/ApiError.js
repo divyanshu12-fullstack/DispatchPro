@@ -1,9 +1,9 @@
 // `isOperational = true` marks expected app-level errors (validation, 404,
 // forbidden, conflict). Non-operational throws are treated as programmer
 // errors: their real message is logged server-side but never returned to the
-// client, which is how we satisfy "never expose stack traces / secrets" without
-// every controller having to remember.
-class ApiError extends Error {
+// client, which is how we satisfy "never expose stack traces / secrets"
+// without every controller having to remember.
+export class ApiError extends Error {
   constructor(statusCode, message, { details, cause, isOperational = true } = {}) {
     super(message);
     this.name = 'ApiError';
@@ -36,5 +36,3 @@ class ApiError extends Error {
     return new ApiError(500, message, { cause, isOperational: false });
   }
 }
-
-module.exports = ApiError;

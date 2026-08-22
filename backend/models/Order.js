@@ -1,24 +1,10 @@
-const mongoose = require('mongoose');
-const { ORDER_STATUS, ORDER_STATUS_VALUES } = require('./constants/OrderStatus');
+import mongoose from 'mongoose';
+import { ORDER_STATUS, ORDER_STATUS_VALUES } from './constants/OrderStatus.js';
 
-/**
- * Order
- *
- * The central business entity. Fields are split into:
- *   - Identity (placedBy/customer/agent refs, orderNumber)
- *   - Shipment (pickup/drop, parcel dimensions & weight, COD/value)
- *   - Pricing snapshot (computed at create-time; rate cards can change later)
- *   - Lifecycle (currentStatus, scheduledDeliveryDate)
- *
- * `pickupZoneId`/`dropZoneId` are resolved at creation time so the hot paths
- * (rate quote, assignment) don't need an Area join. The raw pincodes are kept
- * for display and for any future re-resolution.
- */
 const PINCODE_REGEX = /^\d{4,8}$/;
 
 const orderSchema = new mongoose.Schema(
   {
-    // --- Identity ---
     orderNumber: {
       type: String,
       required: [true, 'orderNumber is required'],
@@ -32,14 +18,12 @@ const orderSchema = new mongoose.Schema(
       ref: 'User',
       required: [true, 'placedBy is required'],
     },
-
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: [true, 'customer is required'],
       index: true,
     },
-
     assignedAgent: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -47,7 +31,6 @@ const orderSchema = new mongoose.Schema(
       index: true,
     },
 
-    // --- Shipment ---
     pickupPincode: {
       type: String,
       required: [true, 'pickupPincode is required'],
@@ -86,7 +69,6 @@ const orderSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Parcel
     actualWeightKg: {
       type: Number,
       required: [true, 'actualWeightKg is required'],
@@ -100,28 +82,19 @@ const orderSchema = new mongoose.Schema(
 
     orderType: {
       type: String,
-      enum: {
-        values: ['B2B', 'B2C'],
-        message: 'orderType must be B2B or B2C',
-      },
+      enum: { values: ['B2B', 'B2C'], message: 'orderType must be B2B or B2C' },
       required: [true, 'orderType is required'],
     },
-
     isCOD: {
       type: Boolean,
       default: false,
     },
-
     declaredValue: {
-      // Required when isCOD=true; spec says "optional, used for COD orders"
       type: Number,
       default: null,
       min: [0, 'declaredValue cannot be negative'],
     },
 
-    // --- Pricing snapshot (computed at create time from RateCard) ---
-    // Stored on the order so historical price is preserved even if rate
-    // cards change later.
     pricing: {
       volumetricWeightKg: { type: Number, required: true, min: 0 },
       billableWeightKg: { type: Number, required: true, min: 0 },
@@ -137,7 +110,6 @@ const orderSchema = new mongoose.Schema(
       currency: { type: String, default: 'INR', uppercase: true, maxlength: 3 },
     },
 
-    // --- Lifecycle ---
     currentStatus: {
       type: String,
       enum: {
@@ -151,20 +123,9 @@ const orderSchema = new mongoose.Schema(
 
     scheduledDeliveryDate: {
       type: Date,
-      required: [
-        function requiredForFlows() {
-          // Spec: required for normal / rescheduled delivery flows.
-          // CREATED orders always need one; FAILED transitions still keep one
-          // for the reschedule flow. We enforce it always-present via `required:true`
-          // here and rely on the controller to set it on creation.
-          return true;
-        },
-        'scheduledDeliveryDate is required',
-      ],
+      required: [true, 'scheduledDeliveryDate is required'],
     },
 
-    // Failure reason carried on the order itself (last failure), distinct
-    // from the per-event reason on each OrderTimeline row.
     lastFailureReason: {
       type: String,
       default: null,
@@ -176,7 +137,6 @@ const orderSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: {
       transform: (_doc, ret) => {
-        // Strip internal Mongoose noise if it ever leaks
         delete ret.__v;
         return ret;
       },
@@ -184,11 +144,8 @@ const orderSchema = new mongoose.Schema(
   }
 );
 
-// Common query: "all orders for customer X, newest first"
 orderSchema.index({ customer: 1, createdAt: -1 });
-// Common query: "all orders assigned to agent X, newest first"
 orderSchema.index({ assignedAgent: 1, createdAt: -1 });
-// Common query: "orders in status X awaiting dispatch"
 orderSchema.index({ currentStatus: 1, pickupZoneId: 1, createdAt: 1 });
 
-module.exports = mongoose.model('Order', orderSchema);
+export default mongoose.model('Order', orderSchema);

@@ -1,41 +1,43 @@
-const express = require('express');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
 
-const healthRoutes = require('./routes/health.routes');
-const errorMiddleware = require('./middleware/error.middleware');
-const ApiError = require('./utils/ApiError');
+import healthRoutes from './routes/health.routes.js';
+import authRoutes from './routes/auth.routes.js';
+import { errorMiddleware } from './middleware/error.middleware.js';
+import { ApiError } from './utils/ApiError.js';
 
-function createApp() {
+export function createApp() {
   const app = express();
 
-  const rawOrigins = (process.env.CORS_ORIGIN || '*').trim();
-  const allowAll = rawOrigins === '*';
-  const allowList = allowAll ? [] : rawOrigins.split(',').map((s) => s.trim()).filter(Boolean);
+  app.use(helmet());
 
-  const corsOptions = allowAll
-    ? { origin: true, credentials: true }
-    : {
-        origin: (origin, cb) => {
-          // No Origin header = server-to-server / curl / Postman; allow it.
-          if (!origin) return cb(null, true);
-          if (allowList.includes(origin)) return cb(null, true);
-          return cb(new Error(`CORS: origin '${origin}' not allowed`));
-        },
-        credentials: true,
-      };
-
-  app.use(cors(corsOptions));
-
-  if (process.env.NODE_ENV !== 'production' && allowAll) {
-    console.warn('[cors] CORS_ORIGIN is "*". Set a real allowlist before deploying.');
+  const rawOrigins = (process.env.CORS_ORIGIN || '').trim();
+  if (!rawOrigins) {
+    // Fail closed: no wildcard, no implicit allow. Set CORS_ORIGIN in .env.
+    throw new Error('CORS_ORIGIN is not set. Define it in your .env (see .env.example).');
   }
+  const allowList = rawOrigins.split(',').map((s) => s.trim()).filter(Boolean);
+
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        // No Origin header = server-to-server / curl / Postman; allow it.
+        if (!origin) return cb(null, true);
+        if (allowList.includes(origin)) return cb(null, true);
+        return cb(new Error(`CORS: origin '${origin}' not allowed`));
+      },
+      credentials: true,
+    })
+  );
 
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
   app.use('/api/health', healthRoutes);
+  app.use('/api/auth', authRoutes);
 
-  // Mounted route trees are added by later steps (auth, orders, ...).
+  // Future steps mount here: /api/orders, etc.
 
   app.use((req, _res, next) => {
     next(ApiError.notFound(`Route not found: ${req.method} ${req.originalUrl}`));
@@ -46,5 +48,3 @@ function createApp() {
 
   return app;
 }
-
-module.exports = createApp;

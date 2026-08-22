@@ -1,7 +1,7 @@
-const ApiError = require('../utils/ApiError');
+import { ApiError } from '../utils/ApiError.js';
 
 // eslint-disable-next-line no-unused-vars
-function errorMiddleware(err, req, res, _next) {
+export function errorMiddleware(err, req, res, _next) {
   if (err && err.name === 'CastError') {
     err = new ApiError(400, `Invalid value for field "${err.path}"`);
   }
@@ -29,6 +29,9 @@ function errorMiddleware(err, req, res, _next) {
 
   const isDev = process.env.NODE_ENV !== 'production';
 
+  // Envelope: { success, data?, message, ... }. On errors `data` is omitted;
+  // `details` is present for validation/conflict; `stack` only in dev for
+  // non-operational errors.
   res.status(err.statusCode).json({
     success: false,
     message: err.message,
@@ -36,5 +39,3 @@ function errorMiddleware(err, req, res, _next) {
     ...(isDev && !err.isOperational ? { stack: err.stack } : {}),
   });
 }
-
-module.exports = errorMiddleware;

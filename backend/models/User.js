@@ -1,17 +1,5 @@
-const mongoose = require('mongoose');
-const { ORDER_STATUS } = require('./constants/OrderStatus');
+import mongoose from 'mongoose';
 
-/**
- * User
- *
- * Holds CUSTOMER, ADMIN, and AGENT accounts. The fields used purely for
- * authentication are kept on every role; agent-workload fields are only
- * populated for role === 'AGENT'.
- *
- * OTP fields are kept here (per Step 1 design decision) and stored as a hash.
- * `select: false` ensures otpHash is never returned by default — verification
- * flows must explicitly opt in with `.select('+otpHash')`.
- */
 const userSchema = new mongoose.Schema(
   {
     email: {
@@ -23,13 +11,11 @@ const userSchema = new mongoose.Schema(
       index: true,
       match: [/^\S+@\S+\.\S+$/, 'Email format is invalid'],
     },
-
     passwordHash: {
       type: String,
       required: [true, 'Password hash is required'],
-      select: false, // never returned in normal reads
+      select: false,
     },
-
     fullName: {
       type: String,
       required: [true, 'Full name is required'],
@@ -37,55 +23,34 @@ const userSchema = new mongoose.Schema(
       minlength: [2, 'Full name is too short'],
       maxlength: [120, 'Full name is too long'],
     },
-
     phone: {
       type: String,
       trim: true,
       default: null,
     },
-
     role: {
       type: String,
-      enum: {
-        values: ['CUSTOMER', 'AGENT', 'ADMIN'],
-        message: 'Role must be CUSTOMER, AGENT, or ADMIN',
-      },
+      enum: { values: ['CUSTOMER', 'AGENT', 'ADMIN'], message: 'Role must be CUSTOMER, AGENT, or ADMIN' },
       required: [true, 'Role is required'],
       index: true,
     },
-
     isEmailVerified: {
       type: Boolean,
       default: false,
     },
 
-    // --- OTP (login / verify-email flows) ---
-    // Hashed at rest. select:false so it never leaks.
-    otpHash: {
-      type: String,
-      default: null,
-      select: false,
-    },
-    otpExpiresAt: {
-      type: Date,
-      default: null,
-    },
-    otpPurpose: {
-      type: String,
-      enum: ['LOGIN', 'VERIFY_EMAIL'],
-      default: null,
-    },
+    // OTP fields are hashed at rest and selected-out by default; verification
+    // flows must explicitly opt in with `.select('+otpHash')`.
+    otpHash: { type: String, default: null, select: false },
+    otpExpiresAt: { type: Date, default: null },
+    otpPurpose: { type: String, enum: ['LOGIN', 'VERIFY_EMAIL'], default: null },
 
-    // --- Agent-only workload fields (ignored for other roles at the service layer) ---
     assignedZoneId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Zone',
       default: null,
     },
-    isAvailable: {
-      type: Boolean,
-      default: true,
-    },
+    isAvailable: { type: Boolean, default: true },
     currentActiveDeliveriesCount: {
       type: Number,
       default: 0,
@@ -93,17 +58,14 @@ const userSchema = new mongoose.Schema(
     },
     maxCapacity: {
       type: Number,
-      default: null, // null/undefined means "no upper bound" for non-agents
+      default: null,
       min: [1, 'Max capacity must be at least 1'],
     },
   },
   {
-    timestamps: true, // createdAt / updatedAt
+    timestamps: true,
     toJSON: {
       transform: (_doc, ret) => {
-        // Defense in depth: never serialize sensitive fields even if a caller
-        // forgets .select('-otpHash'). passwordHash/otpHash have select:false,
-        // but belt-and-braces here.
         delete ret.passwordHash;
         delete ret.otpHash;
         delete ret.otpExpiresAt;
@@ -114,10 +76,8 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Compound index for the assignment hot path:
-// "Find an available agent in zone Z with spare capacity."
-// Service layer will run: findOneAndUpdate({ role:'AGENT', isAvailable:true,
-// assignedZoneId: Z, currentActiveDeliveriesCount:{ $lt: maxCapacity } }, ...)
+// Supports the assignment hot path:
+// findOneAndUpdate({ role, isAvailable, assignedZoneId, currentActiveDeliveriesCount: { $lt: maxCapacity } }, ...)
 userSchema.index({
   role: 1,
   isAvailable: 1,
@@ -125,4 +85,4 @@ userSchema.index({
   currentActiveDeliveriesCount: 1,
 });
 
-module.exports = mongoose.model('User', userSchema);
+export default mongoose.model('User', userSchema);
