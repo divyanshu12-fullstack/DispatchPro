@@ -4,6 +4,7 @@ import helmet from 'helmet';
 
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import orderRoutes from './routes/order.routes.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { ApiError } from './utils/ApiError.js';
 
@@ -36,8 +37,7 @@ export function createApp() {
 
   app.use('/api/health', healthRoutes);
   app.use('/api/auth', authRoutes);
-
-  // Future steps mount here: /api/orders, etc.
+  app.use('/api/orders', orderRoutes);
 
   app.use((req, _res, next) => {
     next(ApiError.notFound(`Route not found: ${req.method} ${req.originalUrl}`));

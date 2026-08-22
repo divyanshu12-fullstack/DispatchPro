@@ -95,6 +95,34 @@ const orderSchema = new mongoose.Schema(
       min: [0, 'declaredValue cannot be negative'],
     },
 
+    // --- B2B business details (sender + receiver) ---
+    // Required only when orderType === 'B2B'. Mongoose's function-based
+    // `required` runs on .save()/.create() — order creation uses Order.create,
+    // so this fires. Documented here for awareness if findOneAndUpdate is
+    // ever used for order mutation: pass runValidators: true.
+    pickupCompanyName: {
+      type: String,
+      required: function () { return this.orderType === 'B2B'; },
+      trim: true,
+    },
+    pickupGstin: {
+      type: String,
+      required: function () { return this.orderType === 'B2B'; },
+      trim: true,
+      uppercase: true,
+    },
+    dropCompanyName: {
+      type: String,
+      required: function () { return this.orderType === 'B2B'; },
+      trim: true,
+    },
+    dropGstin: {
+      type: String,
+      required: function () { return this.orderType === 'B2B'; },
+      trim: true,
+      uppercase: true,
+    },
+
     pricing: {
       volumetricWeightKg: { type: Number, required: true, min: 0 },
       billableWeightKg: { type: Number, required: true, min: 0 },
