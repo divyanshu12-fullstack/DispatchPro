@@ -1,5 +1,6 @@
-import { createAgent } from '../services/agent.service.js';
-import { validateCreateAgent } from '../validation/agent.validation.js';
+import { createAgent, updateAgent, listAgents } from '../services/agent.service.js';
+import { validateCreateAgent, validateUpdateAgent } from '../validation/agent.validation.js';
+import { validateObjectId } from '../validation/dispatch.validation.js';
 
 function publicAgent(u) {
   return {
@@ -8,10 +9,17 @@ function publicAgent(u) {
     fullName: u.fullName,
     phone: u.phone,
     role: u.role,
-    assignedZoneId: u.assignedZoneId,
+    assignedZone: u.assignedZoneId
+      ? {
+          id: u.assignedZoneId._id ?? u.assignedZoneId,
+          name: u.assignedZoneId.name ?? null,
+          code: u.assignedZoneId.code ?? null,
+        }
+      : null,
     isAvailable: u.isAvailable,
     currentActiveDeliveriesCount: u.currentActiveDeliveriesCount,
     maxCapacity: u.maxCapacity,
+    createdAt: u.createdAt,
   };
 }
 
@@ -23,6 +31,29 @@ export const adminController = {
       success: true,
       data: publicAgent(agent),
       message: 'Agent created',
+    });
+  },
+
+  async updateAgent(req, res) {
+    const agentId = validateObjectId(req.params.id, 'agentId');
+    const update = validateUpdateAgent(req.body);
+    const agent = await updateAgent({ agentId, input: update });
+    res.json({
+      success: true,
+      data: publicAgent(agent),
+      message: 'Agent updated',
+    });
+  },
+
+  async listAgents(req, res) {
+    const agents = await listAgents({ query: req.query });
+    res.json({
+      success: true,
+      data: {
+        items: agents.map(publicAgent),
+        total: agents.length,
+      },
+      message: 'Agents listed',
     });
   },
 };

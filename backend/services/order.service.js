@@ -4,9 +4,10 @@ import Order from '../models/Order.js';
 import OrderTimeline from '../models/OrderTimeline.js';
 import User from '../models/User.js';
 import { ApiError } from '../utils/ApiError.js';
-import { ORDER_STATUS } from '../models/constants/OrderStatus.js';
+import { ORDER_STATUS, ORDER_STATUS_VALUES } from '../models/constants/OrderStatus.js';
 import { quoteForPincodes } from './rate.service.js';
 import { nextOrderNumber } from './orderNumber.service.js';
+import { sendOrderStatusEmail } from './email.service.js';
 
 export async function createOrder({ caller, input }) {
   const { orderType, pickupPincode, dropPincode, pickupAddress, dropAddress,
@@ -70,12 +71,13 @@ export async function createOrder({ caller, input }) {
   // Atomic: Order create + OrderTimeline insert must commit together.
   const session = await mongoose.startSession();
   let createdOrder;
+  let creationTimeline;
   try {
     await session.withTransaction(async () => {
       const [order] = await Order.create([orderDoc], { session });
       createdOrder = order;
 
-      await OrderTimeline.create([{
+      [creationTimeline] = await OrderTimeline.create([{
         orderId: order._id,
         fromStatus: null,
         toStatus: ORDER_STATUS.CREATED,
@@ -89,6 +91,11 @@ export async function createOrder({ caller, input }) {
   } finally {
     await session.endSession();
   }
+
+  // Post-commit: "order placed" confirmation (fire-and-log, never blocks).
+  sendOrderStatusEmail({ timeline: creationTimeline }).catch((e) =>
+    console.error('[order] unexpected sendOrderStatusEmail rejection:', e),
+  );
 
   return createdOrder;
 }
@@ -122,4 +129,50 @@ export async function getOrderForUser({ caller, orderId }) {
   }
 
   throw ApiError.forbidden('You do not have access to this order');
+}
+
+const MAX_PAGE_LIMIT = 100;
+
+/**
+ * Role-scoped order listing with pagination and optional status filter.
+ * CUSTOMER → own orders; AGENT → assigned orders; ADMIN → everything.
+ */
+export async function listOrdersForUser({ caller, query = {} }) {
+  const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
+  const limit = Math.min(MAX_PAGE_LIMIT, Math.max(1, Number.parseInt(query.limit, 10) || 20));
+  const filter = {};
+
+  if (query.status) {
+    if (!ORDER_STATUS_VALUES.includes(query.status)) {
+      throw ApiError.badRequest(`status must be one of: ${ORDER_STATUS_VALUES.join(', ')}`);
+    }
+    filter.currentStatus = query.status;
+  }
+
+  if (caller.role === 'CUSTOMER') {
+    filter.customer = caller.id;
+  } else if (caller.role === 'AGENT') {
+    filter.assignedAgent = caller.id;
+  } else if (caller.role !== 'ADMIN') {
+    throw ApiError.forbidden('You do not have access to orders');
+  }
+
+  const [items, total] = await Promise.all([
+    Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    Order.countDocuments(filter),
+  ]);
+
+  return { items, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+/**
+ * Append-only audit trail for one order. Same visibility rules as getOrderForUser.
+ */
+export async function getTimelineForUser({ caller, orderId }) {
+  const order = await getOrderForUser({ caller, orderId });
+  return OrderTimeline.find({ orderId: order._id }).sort({ changedAt: 1 }).lean();
 }

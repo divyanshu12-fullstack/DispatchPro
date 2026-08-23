@@ -1,9 +1,11 @@
-import { createOrder, getOrderForUser } from '../services/order.service.js';
+import { createOrder, getOrderForUser, listOrdersForUser, getTimelineForUser } from '../services/order.service.js';
 import { dispatchOrder } from '../services/dispatch.service.js';
 import { transitionOrder } from '../services/lifecycle.service.js';
+import { rescheduleOrder } from '../services/reschedule.service.js';
 import { validateCreateOrder } from '../validation/order.validation.js';
 import { validateObjectId } from '../validation/dispatch.validation.js';
 import { validateStatusUpdate } from '../validation/lifecycle.validation.js';
+import { validateReschedule } from '../validation/reschedule.validation.js';
 
 function shapeOrder(o) {
   return {
@@ -75,6 +77,43 @@ export const orderController = {
     res.json({ success: true, data: shapeOrder(order) });
   },
 
+  async list(req, res) {
+    const { items, total, page, limit, pages } = await listOrdersForUser({
+      caller: req.user,
+      query: req.query,
+    });
+    res.json({
+      success: true,
+      data: {
+        items: items.map(shapeOrder),
+        pagination: { total, page, limit, pages },
+      },
+    });
+  },
+
+  async timeline(req, res) {
+    const events = await getTimelineForUser({
+      caller: req.user,
+      orderId: req.params.id,
+    });
+    res.json({
+      success: true,
+      data: {
+        items: events.map((t) => ({
+          id: t._id,
+          fromStatus: t.fromStatus,
+          toStatus: t.toStatus,
+          actorRole: t.actorRole,
+          location: t.location,
+          failureReason: t.failureReason,
+          note: t.note,
+          changedAt: t.changedAt,
+          scheduledDeliveryDate: t.scheduledDeliveryDate,
+        })),
+      },
+    });
+  },
+
   async dispatch(req, res) {
     const orderId = validateObjectId(req.params.id, 'orderId');
     const order = await dispatchOrder({ caller: req.user, orderId });
@@ -100,6 +139,26 @@ export const orderController = {
       success: true,
       data: shapeOrder(order),
       message: 'Status updated',
+    });
+  },
+
+  async reschedule(req, res) {
+    const orderId = validateObjectId(req.params.id, 'orderId');
+    const { newDeliveryDate } = validateReschedule(req.body);
+    const { order, reassigned } = await rescheduleOrder({
+      caller: req.user,
+      orderId,
+      newDeliveryDate,
+    });
+    res.json({
+      success: true,
+      data: {
+        ...shapeOrder(order),
+        reassigned,
+      },
+      message: reassigned
+        ? 'Order rescheduled and assigned to a new agent'
+        : 'Order rescheduled — awaiting agent assignment',
     });
   },
 };

@@ -11,5 +11,7 @@ router.use(authenticate);
 router.use(requireRole('ADMIN'));
 
 router.post('/agents', asyncHandler(adminController.createAgent));
+router.get('/agents', asyncHandler(adminController.listAgents));
+router.patch('/agents/:id', asyncHandler(adminController.updateAgent));
 
 export default router;

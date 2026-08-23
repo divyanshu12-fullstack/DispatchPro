@@ -55,6 +55,15 @@ export async function transitionOrder({ caller, orderId, toStatus, failureReason
 
   const fromStatus = order.currentStatus;
 
+  // FAILED → CREATED (the reschedule reset) is reserved for the dedicated
+  // customer-facing endpoint — it also resets date/agent/retry state and must
+  // never be reachable through the generic status transition.
+  if (toStatus === ORDER_STATUS.CREATED) {
+    throw ApiError.unprocessable(
+      'Reschedule must be performed via POST /api/orders/:id/reschedule'
+    );
+  }
+
   let actualToStatus = toStatus;
   if (toStatus === ORDER_STATUS.FAILED) {
     actualToStatus = resolveFailureStatus(failureReason, order.failedAttemptCount);

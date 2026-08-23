@@ -31,3 +31,9 @@ export async function connectDB() {
     console.warn('[db] Disconnected from MongoDB');
   });
 }
+
+export async function disconnectDB() {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+}

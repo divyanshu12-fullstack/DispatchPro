@@ -1,15 +1,32 @@
-import { emailLayout, escapeHtml, styles } from './email-layout.js';
+import { FRONTEND_URL } from '../config/env.js';
+import { emailLayout, escapeHtml, formatDate, detailRows, ctaButton } from './email-layout.js';
 
 export function otpEmail({ email, code, purpose, expiresAt }) {
-  const purposeText = purpose === 'VERIFY_EMAIL' ? 'verify your email' : 'log in';
+  const purposeText = purpose === 'VERIFY_EMAIL' ? 'verify your email address' : 'log in to your account';
+
   return {
-    subject: `Your DispatchPro code: ${code}`,
+    subject: `${code} is your DispatchPro verification code`,
     html: emailLayout({
-      preheader: 'Your secure DispatchPro code is valid for the next 10 minutes.',
-      eyebrow: 'Security check',
-      title: 'Your one-time code',
-      intro: `Use this code to ${purposeText}. For your security, this OTP is valid for the next 10 minutes.`,
-      content: `<div style="${styles.panel};text-align:center;margin-bottom:24px"><p style="margin:0;color:#165dff;font-size:34px;line-height:1.2;font-weight:700;letter-spacing:8px">${escapeHtml(code)}</p></div><p style="margin:0;color:${styles.label.split(':')[1] || '#667085'};font-size:13px;line-height:1.6">If you did not request this code, you can safely ignore this email.</p>`,
+      preheader: `Your secure DispatchPro code expires in 10 minutes.`,
+      banner: 'Security verification',
+      bannerTone: 'info',
+      title: 'Confirm it\u2019s really you',
+      intro: `Use the one-time code below to ${purposeText}. This code is valid for <strong>10 minutes</strong>${expiresAt ? ` (until ${escapeHtml(formatDate(expiresAt))})` : ''} and can be used only once.`,
+      content: `
+        <div style="text-align:center;margin:28px 0 22px">
+          <div style="display:inline-block;background:#0f1c33;border-radius:14px;padding:20px 36px">
+            <span style="color:#ffffff;font-size:38px;font-weight:800;letter-spacing:12px;line-height:1">${escapeHtml(code)}</span>
+          </div>
+          <p style="margin:16px 0 0;color:#5b6b83;font-size:13px">Enter this code on the DispatchPro verification screen</p>
+        </div>
+        ${detailRows([
+          ['Purpose', escapeHtml(purposeText)],
+          ['Requested by', escapeHtml(email)],
+        ])}
+        <p style="margin:24px 0 0;color:#5b6b83;font-size:13px;line-height:1.6">
+          Didn\u2019t request this code? Someone may have typed your email by mistake — you can safely ignore this message. We will never ask for your password or payment details over email.
+        </p>
+        ${ctaButton(`${FRONTEND_URL}/verify`, 'Go to verification')}`,
       footerEmail: email,
     }),
   };

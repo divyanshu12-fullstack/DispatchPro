@@ -50,3 +50,41 @@ export function validateCreateAgent(body) {
 
   return { email, password, fullName, phone, assignedZoneId, maxCapacity };
 }
+
+// Partial update: at least one of isAvailable / maxCapacity / assignedZoneId.
+export function validateUpdateAgent(body) {
+  const errors = {};
+  const isAvailable = body?.isAvailable;
+  const maxCapacity = asNumber(body?.maxCapacity);
+  const assignedZoneId = asString(body?.assignedZoneId);
+
+  if (isAvailable !== undefined && typeof isAvailable !== 'boolean') {
+    errors.isAvailable = 'isAvailable must be a boolean';
+  }
+
+  if (maxCapacity != null && (maxCapacity < 1 || !Number.isInteger(maxCapacity))) {
+    errors.maxCapacity = 'maxCapacity must be a whole number >= 1';
+  }
+
+  if (assignedZoneId && !mongoose.Types.ObjectId.isValid(assignedZoneId)) {
+    errors.assignedZoneId = 'assignedZoneId must be a valid ObjectId';
+  }
+
+  if (
+    isAvailable === undefined &&
+    maxCapacity == null &&
+    !assignedZoneId
+  ) {
+    errors.body = 'Provide at least one of isAvailable, maxCapacity, assignedZoneId';
+  }
+
+  if (Object.keys(errors).length) {
+    throw ApiError.unprocessable('Validation failed', errors);
+  }
+
+  const update = {};
+  if (isAvailable !== undefined) update.isAvailable = isAvailable;
+  if (maxCapacity != null) update.maxCapacity = maxCapacity;
+  if (assignedZoneId) update.assignedZoneId = assignedZoneId;
+  return update;
+}
