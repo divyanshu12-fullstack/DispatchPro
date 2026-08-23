@@ -1,5 +1,7 @@
 import { createOrder, getOrderForUser } from '../services/order.service.js';
+import { dispatchOrder } from '../services/dispatch.service.js';
 import { validateCreateOrder } from '../validation/order.validation.js';
+import { validateObjectId } from '../validation/dispatch.validation.js';
 
 function shapeOrder(o) {
   return {
@@ -69,5 +71,15 @@ export const orderController = {
       orderId: req.params.id,
     });
     res.json({ success: true, data: shapeOrder(order) });
+  },
+
+  async dispatch(req, res) {
+    const orderId = validateObjectId(req.params.id, 'orderId');
+    const order = await dispatchOrder({ caller: req.user, orderId });
+    res.json({
+      success: true,
+      data: shapeOrder(order),
+      message: 'Order dispatched',
+    });
   },
 };

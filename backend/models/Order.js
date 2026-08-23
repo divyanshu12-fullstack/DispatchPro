@@ -160,6 +160,17 @@ const orderSchema = new mongoose.Schema(
       trim: true,
       maxlength: [500, 'lastFailureReason is too long'],
     },
+
+    assignmentAttempts: {
+      type: Number,
+      default: 0,
+      min: [0, 'assignmentAttempts cannot be negative'],
+    },
+    needsManualAttention: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,

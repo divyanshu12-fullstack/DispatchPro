@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import { createApp } from './app.js';
 import { connectDB } from './config/db.js';
+import { startAssignmentSweep, stopAssignmentSweep } from './services/dispatch.service.js';
 
 function assertRequiredEnv() {
   const required = ['MONGO_URI', 'JWT_SECRET', 'CORS_ORIGIN'];
@@ -18,6 +19,18 @@ function assertRequiredEnv() {
   ) {
     throw new Error('JWT_SECRET must be at least 32 characters in production.');
   }
+
+  // Email: real sending requires RESEND_API_KEY + EMAIL_FROM. If EMAIL_STUB=true,
+  // the email service logs to console instead of calling Resend — useful in dev.
+  const stubbed = process.env.EMAIL_STUB === 'true';
+  if (!stubbed) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not set. Set it in .env, or EMAIL_STUB=true to log instead.');
+    }
+    if (!process.env.EMAIL_FROM) {
+      throw new Error('EMAIL_FROM is not set. Set it in .env (e.g. "App <no-reply@yourdomain.com>").');
+    }
+  }
 }
 
 async function bootstrap() {
@@ -32,9 +45,11 @@ async function bootstrap() {
     console.log(`[server] Listening on http://localhost:${port} (${process.env.NODE_ENV || 'development'})`);
   });
 
-  // SIGTERM is what Render/Railway send on deploy; let in-flight requests finish.
+  startAssignmentSweep();
+
   const shutdown = (signal) => {
     console.log(`[server] ${signal} received, shutting down...`);
+    stopAssignmentSweep();
     server.close(() => {
       console.log('[server] HTTP server closed.');
       process.exit(0);

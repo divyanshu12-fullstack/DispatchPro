@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 
 import User from '../models/User.js';
 import { ApiError } from '../utils/ApiError.js';
+import { sendOtpEmail, sendWelcomeEmail } from './email.service.js';
 
 const BCRYPT_COST = 12;
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -53,12 +54,13 @@ export async function issueOtp({ email, purpose }) {
   user.otpPurpose = purpose;
   await user.save();
 
-  // Email sending is stubbed until Step 8 wires Resend. The code below
-  // is the single hook Step 8 will replace — same payload shape, so the
-  // service contract doesn't change.
-  console.log(
-    `[email-stub] OTP for ${email} (purpose=${purpose}, expiresAt=${user.otpExpiresAt.toISOString()}): ${code}`
-  );
+  // Fire-and-log: per spec, email failure must not roll back business state.
+  sendOtpEmail({
+    email,
+    code,
+    purpose,
+    expiresAt: user.otpExpiresAt.toISOString(),
+  }).catch((e) => console.error('[auth] unexpected sendOtpEmail rejection:', e));
 
   return { delivered: true };
 }
@@ -113,8 +115,9 @@ export async function registerCustomer({ email, password, fullName, phone }) {
     role: 'CUSTOMER',
   });
 
-  // Welcome email stubbed — Step 8 will replace with Resend call.
-  console.log(`[email-stub] Welcome email for ${user.email}`);
+  sendWelcomeEmail({ user }).catch((e) =>
+    console.error('[auth] unexpected sendWelcomeEmail rejection:', e)
+  );
 
   return user;
 }
