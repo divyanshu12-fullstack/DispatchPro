@@ -16,5 +16,6 @@ router.use(authenticate);
 router.post('/', asyncHandler(orderController.create));
 router.get('/:id', asyncHandler(orderController.getById));
 router.post('/:id/dispatch', requireRole('ADMIN'), asyncHandler(orderController.dispatch));
+router.post('/:id/status', asyncHandler(orderController.updateStatus));
 
 export default router;

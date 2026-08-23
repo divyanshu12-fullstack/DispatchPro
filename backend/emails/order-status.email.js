@@ -9,6 +9,7 @@ const STATUS_LABELS = {
   DELIVERED: 'Delivered',
   FAILED: 'Delivery failed',
   RESCHEDULED: 'Rescheduled',
+  RETURN_TO_ORIGIN: 'Returning to origin',
 };
 
 export function orderStatusEmail({ timeline }) {

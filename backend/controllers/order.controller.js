@@ -1,7 +1,9 @@
 import { createOrder, getOrderForUser } from '../services/order.service.js';
 import { dispatchOrder } from '../services/dispatch.service.js';
+import { transitionOrder } from '../services/lifecycle.service.js';
 import { validateCreateOrder } from '../validation/order.validation.js';
 import { validateObjectId } from '../validation/dispatch.validation.js';
+import { validateStatusUpdate } from '../validation/lifecycle.validation.js';
 
 function shapeOrder(o) {
   return {
@@ -80,6 +82,24 @@ export const orderController = {
       success: true,
       data: shapeOrder(order),
       message: 'Order dispatched',
+    });
+  },
+
+  async updateStatus(req, res) {
+    const orderId = validateObjectId(req.params.id, 'orderId');
+    const input = validateStatusUpdate(req.body);
+    const order = await transitionOrder({
+      caller: req.user,
+      orderId,
+      toStatus: input.status,
+      failureReason: input.failureReason,
+      location: input.location,
+      note: input.note,
+    });
+    res.json({
+      success: true,
+      data: shapeOrder(order),
+      message: 'Status updated',
     });
   },
 };

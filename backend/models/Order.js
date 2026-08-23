@@ -171,6 +171,11 @@ const orderSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    failedAttemptCount: {
+      type: Number,
+      default: 0,
+      min: [0, 'failedAttemptCount cannot be negative'],
+    },
   },
   {
     timestamps: true,

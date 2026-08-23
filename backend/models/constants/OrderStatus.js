@@ -7,6 +7,7 @@ export const ORDER_STATUS = Object.freeze({
   DELIVERED: 'DELIVERED',
   FAILED: 'FAILED',
   RESCHEDULED: 'RESCHEDULED',
+  RETURN_TO_ORIGIN: 'RETURN_TO_ORIGIN',
 });
 
 export const ORDER_STATUS_VALUES = Object.freeze(Object.values(ORDER_STATUS));

@@ -6,6 +6,7 @@ import { welcomeEmail } from '../emails/welcome.email.js';
 import { orderStatusEmail } from '../emails/order-status.email.js';
 import { failedDeliveryEmail } from '../emails/failed-delivery.email.js';
 import { rescheduledEmail } from '../emails/rescheduled.email.js';
+import { returnToOriginEmail } from '../emails/return-to-origin.email.js';
 
 let resendClient = null;
 if (!EMAIL_STUB && RESEND_API_KEY) {
@@ -105,5 +106,15 @@ export function sendRescheduledEmail({ timeline }) {
     subject: tpl.subject,
     html: tpl.html,
     idempotencyKey: `rescheduled:${timeline._id}`,
+  });
+}
+
+export function sendReturnToOriginEmail({ timeline }) {
+  const tpl = returnToOriginEmail({ timeline });
+  return sendEmail({
+    to: timeline.customerEmail,
+    subject: tpl.subject,
+    html: tpl.html,
+    idempotencyKey: `return-to-origin:${timeline._id}`,
   });
 }
