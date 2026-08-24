@@ -67,7 +67,12 @@ export function validateOtpRequest(body) {
 export function validateOtpVerify(body) {
   const errors = {};
   const email = asString(body?.email).toLowerCase();
-  const code = typeof body?.code === 'string' ? body.code.trim() : '';
+  const code =
+    typeof body?.code === 'string'
+      ? body.code.trim()
+      : typeof body?.otp === 'string'
+      ? body.otp.trim()
+      : '';
   const purpose = asString(body?.purpose);
 
   if (!email) errors.email = 'Email is required';

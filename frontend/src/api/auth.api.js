@@ -30,11 +30,17 @@ export const authApi = {
 
   /**
    * Verify OTP and receive authentication token.
-   * @param {{ email: string, otp: string, purpose: 'LOGIN' | 'VERIFY_EMAIL' }} payload
+   * @param {{ email: string, code?: string, otp?: string, purpose: 'LOGIN' | 'VERIFY_EMAIL' }} payload
    * @returns {Promise<{ token: string, user: { id: string, email: string, fullName: string, phone: string, role: string, isEmailVerified: boolean } }>}
    */
   verifyOtp(payload) {
-    return apiClient.post('/auth/verify-otp', payload);
+    const code = String(payload.code || payload.otp || '').trim();
+    return apiClient.post('/auth/verify-otp', {
+      email: payload.email,
+      code,
+      otp: code,
+      purpose: payload.purpose,
+    });
   },
 
   /**

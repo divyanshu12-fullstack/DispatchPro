@@ -57,7 +57,7 @@ export function QuoteCalculatorPage() {
     if (!values.breadthCm || parseFloat(values.breadthCm) <= 0) errors.breadthCm = 'Required';
     if (!values.heightCm || parseFloat(values.heightCm) <= 0) errors.heightCm = 'Required';
     if (values.isCOD && (!values.declaredValue || parseFloat(values.declaredValue) <= 0)) {
-      errors.declaredValue = 'Declared value required for COD';
+      errors.declaredValue = 'Parcel value required for COD';
     }
 
     if (Object.keys(errors).length > 0) {

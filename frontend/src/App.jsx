@@ -11,6 +11,20 @@ import { RegisterPage } from './features/public/RegisterPage.jsx';
 import { VerifyPage } from './features/public/VerifyPage.jsx';
 import { QuoteCalculatorPage } from './features/public/QuoteCalculatorPage.jsx';
 
+import { CustomerDashboardPage } from './features/customer/CustomerDashboardPage.jsx';
+import { CreateOrderWizardPage } from './features/customer/CreateOrderWizardPage.jsx';
+import { OrderDetailPage } from './features/customer/OrderDetailPage.jsx';
+import { ReschedulePage } from './features/customer/ReschedulePage.jsx';
+
+import { AgentDashboardPage } from './features/agent/AgentDashboardPage.jsx';
+import { AgentOrderDetailPage } from './features/agent/AgentOrderDetailPage.jsx';
+
+import { AdminOverviewPage } from './features/admin/AdminOverviewPage.jsx';
+import { AdminOrdersPage } from './features/admin/AdminOrdersPage.jsx';
+import { AdminDispatchPage } from './features/admin/AdminDispatchPage.jsx';
+import { AdminAgentsPage } from './features/admin/AdminAgentsPage.jsx';
+import { AdminRatesPage } from './features/admin/AdminRatesPage.jsx';
+
 import { Navbar } from './components/layout/Navbar.jsx';
 
 const queryClient = new QueryClient({
@@ -94,46 +108,10 @@ export default function App() {
                     </RequireRole>
                   }
                 >
-                  <Route
-                    index
-                    element={
-                      <PlaceholderPage
-                        title="Customer Dashboard"
-                        subtitle="View and manage your active shipments and delivery status."
-                        roleTag="Customer Portal"
-                      />
-                    }
-                  />
-                  <Route
-                    path="new"
-                    element={
-                      <PlaceholderPage
-                        title="Create Shipment Order"
-                        subtitle="4-Step shipment wizard: addresses, parcel specifications, business details, review & pay."
-                        roleTag="Customer Portal"
-                      />
-                    }
-                  />
-                  <Route
-                    path="orders/:id"
-                    element={
-                      <PlaceholderPage
-                        title="Order Details & Timeline"
-                        subtitle="Waybill header, lifecycle milestone stepper, and immutable audit timeline."
-                        roleTag="Customer Portal"
-                      />
-                    }
-                  />
-                  <Route
-                    path="reschedule"
-                    element={
-                      <PlaceholderPage
-                        title="Reschedule Failed Delivery"
-                        subtitle="Select a new future delivery window for failed deliveries."
-                        roleTag="Customer Portal"
-                      />
-                    }
-                  />
+                  <Route index element={<CustomerDashboardPage />} />
+                  <Route path="new" element={<CreateOrderWizardPage />} />
+                  <Route path="orders/:id" element={<OrderDetailPage />} />
+                  <Route path="reschedule" element={<ReschedulePage />} />
                 </Route>
 
                 {/* Agent Mobile Routes */}
@@ -145,26 +123,8 @@ export default function App() {
                     </RequireRole>
                   }
                 >
-                  <Route
-                    index
-                    element={
-                      <PlaceholderPage
-                        title="Agent Delivery Task Queue"
-                        subtitle="View assigned deliveries and pending doorsteps."
-                        roleTag="Agent Console"
-                      />
-                    }
-                  />
-                  <Route
-                    path="orders/:id"
-                    element={
-                      <PlaceholderPage
-                        title="Delivery Action & Handover"
-                        subtitle="Advance status milestones and verify customer doorstep code."
-                        roleTag="Agent Console"
-                      />
-                    }
-                  />
+                  <Route index element={<AgentDashboardPage />} />
+                  <Route path="orders/:id" element={<AgentOrderDetailPage />} />
                 </Route>
 
                 {/* Admin Routes */}
@@ -176,46 +136,11 @@ export default function App() {
                     </RequireRole>
                   }
                 >
-                  <Route
-                    index
-                    element={
-                      <PlaceholderPage
-                        title="Operations Overview"
-                        subtitle="Live metrics, unassigned orders, and fleet overview."
-                        roleTag="Admin Console"
-                      />
-                    }
-                  />
-                  <Route
-                    path="orders"
-                    element={
-                      <PlaceholderPage
-                        title="All Shipments Table"
-                        subtitle="Search, filter, and inspect all orders across Delhi NCR."
-                        roleTag="Admin Console"
-                      />
-                    }
-                  />
-                  <Route
-                    path="dispatch"
-                    element={
-                      <PlaceholderPage
-                        title="Manual Dispatch Queue"
-                        subtitle="Manage unassigned orders and manual intervention queues."
-                        roleTag="Admin Console"
-                      />
-                    }
-                  />
-                  <Route
-                    path="agents"
-                    element={
-                      <PlaceholderPage
-                        title="Fleet & Agent Management"
-                        subtitle="Monitor agent loads, assign zones, and onboard new drivers."
-                        roleTag="Admin Console"
-                      />
-                    }
-                  />
+                  <Route index element={<AdminOverviewPage />} />
+                  <Route path="orders" element={<AdminOrdersPage />} />
+                  <Route path="dispatch" element={<AdminDispatchPage />} />
+                  <Route path="agents" element={<AdminAgentsPage />} />
+                  <Route path="rates" element={<AdminRatesPage />} />
                 </Route>
 
                 {/* 404 Route */}

@@ -3,3 +3,15 @@
 [error] POST /api/orders/quote -> 422: Validation failed
 [error] POST /api/orders/quote -> 422: Validation failed
 [error] POST /api/orders/quote -> 422: Validation failed
+[error] POST /api/orders/quote -> 422: Pincode 226010 is not serviceable
+[error] POST /api/orders/quote -> 422: Pincode 226010 is not serviceable
+[error] POST /api/orders/quote -> 422: Pincode 226010 is not serviceable
+[error] POST /api/orders/quote -> 422: Validation failed
+[error] POST /api/orders/quote -> 422: Validation failed
+[error] POST /api/orders/quote -> 422: Validation failed
+[error] POST /api/orders/6a8b4a89ff1e8e4c9f84ee27/dispatch -> 422: No available agent in the pickup zone
+[error] POST /api/orders/6a8b4a89ff1e8e4c9f84ee27/dispatch -> 422: No available agent in the pickup zone
+[error] GET /api/admin/rates -> 404: Route not found: GET /api/admin/rates
+[error] GET /api/admin/rates -> 404: Route not found: GET /api/admin/rates
+[error] GET /api/admin/rates -> 404: Route not found: GET /api/admin/rates
+[error] GET /api/admin/rates -> 404: Route not found: GET /api/admin/rates

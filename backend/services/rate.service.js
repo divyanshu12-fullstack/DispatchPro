@@ -124,3 +124,37 @@ export async function quoteForPincodes({
     pricing,
   };
 }
+
+/**
+ * Admin listing of all configured rate cards.
+ */
+export async function listRateCards() {
+  return RateCard.find({}).sort({ orderType: 1, tripType: 1, baseWeight: 1 }).lean();
+}
+
+/**
+ * Admin update of a rate card's pricing and surcharge parameters.
+ */
+export async function updateRateCard({ rateCardId, input }) {
+  const card = await RateCard.findById(rateCardId);
+  if (!card) throw ApiError.notFound('Rate card not found');
+
+  const {
+    baseWeight,
+    baseRate,
+    additionalPerKgRate,
+    codSurchargeFixed,
+    codSurchargePercent,
+    isActive,
+  } = input;
+
+  if (baseWeight !== undefined) card.baseWeight = baseWeight;
+  if (baseRate !== undefined) card.baseRate = baseRate;
+  if (additionalPerKgRate !== undefined) card.additionalPerKgRate = additionalPerKgRate;
+  if (codSurchargeFixed !== undefined) card.codSurchargeFixed = codSurchargeFixed;
+  if (codSurchargePercent !== undefined) card.codSurchargePercent = codSurchargePercent;
+  if (isActive !== undefined) card.isActive = isActive;
+
+  await card.save();
+  return card;
+}

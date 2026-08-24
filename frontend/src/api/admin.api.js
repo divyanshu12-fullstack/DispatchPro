@@ -47,4 +47,29 @@ export const adminApi = {
   listZones() {
     return apiClient.get('/admin/zones');
   },
+
+  /**
+   * List all configured pricing rate cards.
+   * @returns {Promise<{ items: Array<{ id: string, orderType: string, tripType: string, baseWeight: number, baseRate: number, additionalPerKgRate: number, codSurchargeFixed: number, codSurchargePercent: number, isActive: boolean, updatedAt: string }>, total: number }>}
+   */
+  listRateCards() {
+    return apiClient.get('/admin/rates');
+  },
+
+  /**
+   * Update tariff rates or surcharges on a rate card.
+   * @param {string} id
+   * @param {{
+   *   baseWeight?: number,
+   *   baseRate?: number,
+   *   additionalPerKgRate?: number,
+   *   codSurchargeFixed?: number,
+   *   codSurchargePercent?: number,
+   *   isActive?: boolean
+   * }} payload
+   * @returns {Promise<any>}
+   */
+  updateRateCard(id, payload) {
+    return apiClient.patch(`/admin/rates/${id}`, payload);
+  },
 };

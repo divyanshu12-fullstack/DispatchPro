@@ -16,6 +16,7 @@ import {
   Layers,
   Users,
   Compass,
+  Tag,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -104,6 +105,7 @@ export function Navbar() {
         { label: 'All Shipments', path: '/admin/orders', icon: <Layers className="w-4 h-4" /> },
         { label: 'Dispatch Queue', path: '/admin/dispatch', icon: <Compass className="w-4 h-4" /> },
         { label: 'Agents & Fleet', path: '/admin/agents', icon: <Users className="w-4 h-4" /> },
+        { label: 'Rate Cards', path: '/admin/rates', icon: <Tag className="w-4 h-4" /> },
         { label: 'Rate Calculator', path: '/quote', icon: <Calculator className="w-4 h-4" /> },
       ];
     }

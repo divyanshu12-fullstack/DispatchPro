@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input } from '../ui/Input.jsx';
 import { ORDER_TYPES } from '../../lib/constants.js';
-import { Box, MapPin, Building, Scale, Banknote } from 'lucide-react';
+import { Box, MapPin, Building, Scale } from 'lucide-react';
 
 /**
  * Shared Quote and Parcel Specification Form Fields.
@@ -199,49 +199,77 @@ export function QuoteFormFields({
         </div>
       </div>
 
-      {/* 4. Cash on Delivery Toggle */}
+      {/* 4. Cash on Delivery Radio Selector */}
       <div className="space-y-3 pt-2 border-t border-hairline">
-        <div className="flex items-center justify-between p-3.5 bg-container-lowest hairline rounded-lg">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded bg-container-low flex items-center justify-center text-primary">
-              <Banknote className="w-4 h-4" />
+        <label className="block label-caps text-ink-variant">Payment Mode at Delivery</label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Prepaid / Standard Option */}
+          <div
+            onClick={() => !disabled && onChange('isCOD', false)}
+            className={`p-3.5 rounded-lg hairline cursor-pointer transition-all flex items-start gap-3 ${
+              !isCOD
+                ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
+                : 'bg-container-low hover:bg-container'
+            }`}
+          >
+            <div
+              className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                !isCOD ? 'border-primary bg-primary text-on-primary' : 'border-outline bg-container-lowest'
+              }`}
+            >
+              {!isCOD && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
             </div>
             <div>
-              <div className="font-display font-bold text-xs sm:text-sm text-ink">
-                Cash on Delivery (COD)
-              </div>
-              <div className="text-[11px] text-ink-variant">
-                Collect payment at doorstep upon handover
-              </div>
+              <div className="font-semibold text-xs text-ink">Prepaid / Non-COD</div>
+              <div className="text-[11px] text-ink-variant mt-0.5">No doorstep cash collection</div>
             </div>
           </div>
 
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={Boolean(isCOD)}
-              onChange={(e) => onChange('isCOD', e.target.checked)}
-              disabled={disabled}
-              className="sr-only peer"
-            />
-            <div className="w-9 h-5 bg-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary" />
-          </label>
+          {/* COD Option */}
+          <div
+            onClick={() => !disabled && onChange('isCOD', true)}
+            className={`p-3.5 rounded-lg hairline cursor-pointer transition-all flex items-start gap-3 ${
+              isCOD
+                ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
+                : 'bg-container-low hover:bg-container'
+            }`}
+          >
+            <div
+              className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                isCOD ? 'border-primary bg-primary text-on-primary' : 'border-outline bg-container-lowest'
+              }`}
+            >
+              {isCOD && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+            </div>
+            <div>
+              <div className="font-semibold text-xs text-ink flex items-center gap-1.5">
+                <span>Cash on Delivery (COD)</span>
+                <span className="px-1.5 py-0.2 rounded bg-accent/20 text-[#735c00] text-[9px] font-bold">
+                  Active
+                </span>
+              </div>
+              <div className="text-[11px] text-ink-variant mt-0.5">Collect cash at doorstep</div>
+            </div>
+          </div>
         </div>
 
         {isCOD && (
-          <Input
-            label="Declared Value (₹)"
-            type="number"
-            min="1"
-            max="100000"
-            placeholder="e.g. 1500"
-            value={declaredValue}
-            onChange={(e) => onChange('declaredValue', e.target.value)}
-            error={errors.declaredValue}
-            helperText="Amount to collect from customer at delivery"
-            disabled={disabled}
-            required
-          />
+          <div className="pt-2 animate-in fade-in slide-in-from-top-1">
+            <Input
+              label="Parcel Value (₹)"
+              type="number"
+              min="1"
+              max="100000"
+              placeholder="e.g. 1500"
+              value={declaredValue}
+              onChange={(e) => onChange('declaredValue', e.target.value)}
+              error={errors.declaredValue}
+              helperText="Amount to collect from the recipient upon doorstep delivery"
+              disabled={disabled}
+              required
+            />
+          </div>
         )}
       </div>
 
