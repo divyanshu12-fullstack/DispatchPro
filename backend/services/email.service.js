@@ -7,6 +7,7 @@ import { orderStatusEmail } from '../emails/order-status.email.js';
 import { failedDeliveryEmail } from '../emails/failed-delivery.email.js';
 import { rescheduledEmail } from '../emails/rescheduled.email.js';
 import { returnToOriginEmail } from '../emails/return-to-origin.email.js';
+import { deliveryOtpEmail } from '../emails/delivery-otp.email.js';
 
 let resendClient = null;
 if (!EMAIL_STUB && RESEND_API_KEY) {
@@ -116,5 +117,15 @@ export function sendReturnToOriginEmail({ timeline }) {
     subject: tpl.subject,
     html: tpl.html,
     idempotencyKey: `return-to-origin:${timeline._id}`,
+  });
+}
+
+export function sendDeliveryOtpEmail({ timeline, otp, expiresAt }) {
+  const tpl = deliveryOtpEmail({ timeline, otp, expiresAt });
+  return sendEmail({
+    to: timeline.customerEmail,
+    subject: tpl.subject,
+    html: tpl.html,
+    idempotencyKey: `delivery-otp:${timeline._id}`,
   });
 }

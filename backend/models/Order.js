@@ -176,6 +176,12 @@ const orderSchema = new mongoose.Schema(
       default: 0,
       min: [0, 'failedAttemptCount cannot be negative'],
     },
+
+    // Delivery-confirmation OTP: generated when the order enters
+    // OUT_FOR_DELIVERY, required from the agent to mark DELIVERED.
+    // Hashed at rest and selected-out by default (same pattern as login OTP).
+    deliveryOtpHash: { type: String, default: null, select: false },
+    deliveryOtpExpiresAt: { type: Date, default: null },
   },
   {
     timestamps: true,

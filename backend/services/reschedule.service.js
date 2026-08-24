@@ -62,6 +62,8 @@ export async function rescheduleOrder({ caller, orderId, newDeliveryDate }) {
             assignedAgent: null,
             assignmentAttempts: 0,
             needsManualAttention: false,
+            deliveryOtpHash: null,
+            deliveryOtpExpiresAt: null,
           },
         },
         { session, new: true },

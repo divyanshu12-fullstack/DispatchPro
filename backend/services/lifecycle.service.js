@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import crypto from 'node:crypto';
+import bcrypt from 'bcrypt';
 
 import Order from '../models/Order.js';
 import OrderTimeline from '../models/OrderTimeline.js';
@@ -15,6 +17,7 @@ import {
   sendOrderStatusEmail,
   sendFailedDeliveryEmail,
   sendReturnToOriginEmail,
+  sendDeliveryOtpEmail,
 } from './email.service.js';
 import { retryAssignmentForZone } from './dispatch.service.js';
 
@@ -23,6 +26,14 @@ const AGENT_RELEASE_STATUSES = new Set([
   ORDER_STATUS.FAILED,
   ORDER_STATUS.RETURN_TO_ORIGIN,
 ]);
+
+const DELIVERY_OTP_LENGTH = 6;
+const DELIVERY_OTP_TTL_MS = 24 * 60 * 60 * 1000; // valid while out for delivery
+
+function generateDeliveryOtp() {
+  const max = 10 ** DELIVERY_OTP_LENGTH;
+  return crypto.randomInt(0, max).toString().padStart(DELIVERY_OTP_LENGTH, '0');
+}
 
 /**
  * Resolve the actual destination status when the agent reports FAILED.
@@ -49,11 +60,34 @@ function resolveFailureStatus(failureReason, currentFailedAttemptCount) {
  * - Atomic: Order update + OrderTimeline + agent release in one transaction
  * - Post-commit: email notification + event-triggered assignment retry
  */
-export async function transitionOrder({ caller, orderId, toStatus, failureReason, location, note }) {
-  const order = await Order.findById(orderId);
+export async function transitionOrder({ caller, orderId, toStatus, failureReason, location, note, deliveryOtp }) {
+  // DELIVERED requires the customer's OTP — fetch with the hash selected.
+  const order = await Order.findById(orderId).select(
+    toStatus === ORDER_STATUS.DELIVERED ? '+deliveryOtpHash' : undefined
+  );
   if (!order) throw ApiError.notFound('Order not found');
 
   const fromStatus = order.currentStatus;
+
+  // Delivery-confirmation gate: the agent (or admin) must present the OTP
+  // that was emailed to the customer when the order went out for delivery.
+  if (
+    toStatus === ORDER_STATUS.DELIVERED &&
+    caller.role !== 'SYSTEM'
+  ) {
+    if (!order.deliveryOtpHash || !order.deliveryOtpExpiresAt) {
+      throw ApiError.conflict(
+        'No delivery OTP is pending for this order (it never reached OUT_FOR_DELIVERY)'
+      );
+    }
+    if (order.deliveryOtpExpiresAt.getTime() < Date.now()) {
+      throw ApiError.unauthorized('Delivery OTP has expired');
+    }
+    const otpOk = await bcrypt.compare(String(deliveryOtp), order.deliveryOtpHash);
+    if (!otpOk) {
+      throw ApiError.unauthorized('Incorrect delivery OTP');
+    }
+  }
 
   // FAILED → CREATED (the reschedule reset) is reserved for the dedicated
   // customer-facing endpoint — it also resets date/agent/retry state and must
@@ -93,6 +127,23 @@ export async function transitionOrder({ caller, orderId, toStatus, failureReason
   if (actualToStatus === ORDER_STATUS.FAILED || actualToStatus === ORDER_STATUS.RETURN_TO_ORIGIN) {
     $set.lastFailureReason = failureReason;
     $inc.failedAttemptCount = 1;
+  }
+
+  // Entering OUT_FOR_DELIVERY: mint the delivery-confirmation OTP inside the
+  // same transaction. Leaving OUT_FOR_DELIVERY without delivering: drop it.
+  let plainDeliveryOtp = null;
+  if (actualToStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
+    plainDeliveryOtp = generateDeliveryOtp();
+    $set.deliveryOtpHash = await bcrypt.hash(plainDeliveryOtp, 10);
+    $set.deliveryOtpExpiresAt = new Date(Date.now() + DELIVERY_OTP_TTL_MS);
+  } else if (fromStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
+    $set.deliveryOtpHash = null;
+    $set.deliveryOtpExpiresAt = null;
+  }
+  if (actualToStatus === ORDER_STATUS.DELIVERED) {
+    // One-shot: a delivered order can never be re-delivered with the same code.
+    $set.deliveryOtpHash = null;
+    $set.deliveryOtpExpiresAt = null;
   }
 
   const session = await mongoose.startSession();
@@ -137,7 +188,17 @@ export async function transitionOrder({ caller, orderId, toStatus, failureReason
   }
 
   // Post-commit: email notification (fire-and-log, never blocks response).
-  if (actualToStatus === ORDER_STATUS.FAILED) {
+  if (actualToStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
+    // The OTP email replaces the generic status email for this milestone —
+    // it carries both the update and the code the customer must share.
+    sendDeliveryOtpEmail({
+      timeline,
+      otp: plainDeliveryOtp,
+      expiresAt: updatedOrder.deliveryOtpExpiresAt,
+    }).catch((e) =>
+      console.error('[lifecycle] unexpected sendDeliveryOtpEmail rejection:', e),
+    );
+  } else if (actualToStatus === ORDER_STATUS.FAILED) {
     sendFailedDeliveryEmail({ timeline }).catch((e) =>
       console.error('[lifecycle] unexpected sendFailedDeliveryEmail rejection:', e),
     );

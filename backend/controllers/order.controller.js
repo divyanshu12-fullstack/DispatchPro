@@ -134,6 +134,7 @@ export const orderController = {
       failureReason: input.failureReason,
       location: input.location,
       note: input.note,
+      deliveryOtp: input.deliveryOtp,
     });
     res.json({
       success: true,

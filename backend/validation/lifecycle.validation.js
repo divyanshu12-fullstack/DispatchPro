@@ -12,6 +12,8 @@ export function validateStatusUpdate(body) {
   const failureReason = asString(body?.failureReason) || null;
   const location = asString(body?.location) || null;
   const note = asString(body?.note) || null;
+  // Delivery-confirmation OTP: required only when completing the delivery.
+  const deliveryOtp = asString(body?.deliveryOtp) || null;
 
   if (!status) {
     errors.status = 'status is required';
@@ -27,6 +29,14 @@ export function validateStatusUpdate(body) {
     }
   }
 
+  if (status === 'DELIVERED') {
+    if (!deliveryOtp || !/^\d{6}$/.test(deliveryOtp)) {
+      errors.deliveryOtp = 'deliveryOtp is required to mark the order DELIVERED (6-digit code sent to the customer)';
+    }
+  } else if (deliveryOtp) {
+    errors.deliveryOtp = 'deliveryOtp is only accepted when status is DELIVERED';
+  }
+
   if (location && location.length > 200) {
     errors.location = 'location must be at most 200 characters';
   }
@@ -38,5 +48,5 @@ export function validateStatusUpdate(body) {
     throw ApiError.unprocessable('Validation failed', errors);
   }
 
-  return { status, failureReason, location, note };
+  return { status, failureReason, location, note, deliveryOtp };
 }
