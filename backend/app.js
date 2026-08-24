@@ -26,7 +26,7 @@ export function createApp() {
       origin: (origin, cb) => {
         // No Origin header = server-to-server / curl / Postman; allow it.
         if (!origin) return cb(null, true);
-        if (allowList.includes(origin)) return cb(null, true);
+        if (allowList.includes('*') || allowList.includes(origin)) return cb(null, true);
         return cb(new Error(`CORS: origin '${origin}' not allowed`));
       },
       credentials: true,
