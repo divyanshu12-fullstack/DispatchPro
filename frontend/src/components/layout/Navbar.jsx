@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { authApi } from '../../api/auth.api.js';
+import { useToast } from '../ui/Toast.jsx';
 import { Button } from '../ui/Button.jsx';
+import { getErrorMessage } from '../../lib/errors.js';
 import {
   Truck,
   PlusCircle,
@@ -12,20 +15,22 @@ import {
   Calculator,
   ShieldCheck,
   AlertCircle,
-  Package,
   Layers,
   Users,
   Compass,
   Tag,
+  Power,
 } from 'lucide-react';
 
 export function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, updateUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isTogglingDuty, setIsTogglingDuty] = useState(false);
   const profileRef = useRef(null);
 
   // Close dropdown on click outside
@@ -50,13 +55,30 @@ export function Navbar() {
     const query = searchQuery.trim();
     if (!query) return;
 
-    // Navigate to order search or detail if tracking number provided
     if (user?.role === 'ADMIN') {
       navigate(`/admin/orders?search=${encodeURIComponent(query)}`);
     } else {
       navigate(`/app?search=${encodeURIComponent(query)}`);
     }
     setSearchQuery('');
+  };
+
+  // Agent self-duty availability toggle
+  const handleToggleAgentDuty = async () => {
+    if (user?.role !== 'AGENT') return;
+    setIsTogglingDuty(true);
+    const targetState = !(user?.isAvailable !== false);
+    try {
+      await authApi.updateMyAvailability(targetState);
+      updateUser({ isAvailable: targetState });
+      toast.success(
+        `You are now ${targetState ? 'ONLINE & AVAILABLE for dispatches' : 'OFF-DUTY'}.`
+      );
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to update duty status.'));
+    } finally {
+      setIsTogglingDuty(false);
+    }
   };
 
   // Get user initials for circular avatar
@@ -70,55 +92,26 @@ export function Navbar() {
     return user.email.slice(0, 2).toUpperCase();
   };
 
-  // Portal metadata
-  const portalLabel =
-    user?.role === 'ADMIN'
-      ? 'Admin Console'
-      : user?.role === 'AGENT'
-      ? 'Agent Console'
-      : user?.role === 'CUSTOMER'
-      ? 'Customer Portal'
-      : null;
+  // Sub-navigation tabs (Only displayed for ADMIN role)
+  const getAdminNavTabs = () => {
+    if (!isAuthenticated || user?.role !== 'ADMIN') return [];
 
-  // Sub-navigation tabs based on active role
-  const getNavTabs = () => {
-    if (!isAuthenticated || !user) return [];
-
-    if (user.role === 'CUSTOMER') {
-      return [
-        { label: 'My Shipments', path: '/app', icon: <Package className="w-4 h-4" /> },
-        { label: 'Book Shipment', path: '/app/new', icon: <PlusCircle className="w-4 h-4" /> },
-        { label: 'Rate Calculator', path: '/quote', icon: <Calculator className="w-4 h-4" /> },
-      ];
-    }
-
-    if (user.role === 'AGENT') {
-      return [
-        { label: 'Assigned Deliveries', path: '/agent', icon: <Truck className="w-4 h-4" /> },
-        { label: 'Rate Calculator', path: '/quote', icon: <Calculator className="w-4 h-4" /> },
-      ];
-    }
-
-    if (user.role === 'ADMIN') {
-      return [
-        { label: 'Overview', path: '/admin', icon: <LayoutDashboard className="w-4 h-4" /> },
-        { label: 'All Shipments', path: '/admin/orders', icon: <Layers className="w-4 h-4" /> },
-        { label: 'Dispatch Queue', path: '/admin/dispatch', icon: <Compass className="w-4 h-4" /> },
-        { label: 'Agents & Fleet', path: '/admin/agents', icon: <Users className="w-4 h-4" /> },
-        { label: 'Rate Cards', path: '/admin/rates', icon: <Tag className="w-4 h-4" /> },
-        { label: 'Rate Calculator', path: '/quote', icon: <Calculator className="w-4 h-4" /> },
-      ];
-    }
-
-    return [];
+    return [
+      { label: 'Overview', path: '/admin', icon: <LayoutDashboard className="w-4 h-4" /> },
+      { label: 'All Shipments', path: '/admin/orders', icon: <Layers className="w-4 h-4" /> },
+      { label: 'Dispatch Queue', path: '/admin/dispatch', icon: <Compass className="w-4 h-4" /> },
+      { label: 'Agents & Fleet', path: '/admin/agents', icon: <Users className="w-4 h-4" /> },
+      { label: 'Rate Cards', path: '/admin/rates', icon: <Tag className="w-4 h-4" /> },
+      { label: 'Create Shipment', path: '/app/new', icon: <PlusCircle className="w-4 h-4" /> },
+    ];
   };
 
-  const navTabs = getNavTabs();
-  const showSubNav = isAuthenticated && navTabs.length > 0;
+  const adminNavTabs = getAdminNavTabs();
+  const showAdminSubNav = isAuthenticated && user?.role === 'ADMIN' && adminNavTabs.length > 0;
 
   // Helper to check active tab state
   const isTabActive = (tabPath) => {
-    if (tabPath === '/app' || tabPath === '/admin' || tabPath === '/agent') {
+    if (tabPath === '/admin') {
       return location.pathname === tabPath;
     }
     return location.pathname === tabPath || location.pathname.startsWith(tabPath + '/');
@@ -128,7 +121,7 @@ export function Navbar() {
     <header className="bg-container-lowest hairline border-t-0 border-x-0 sticky top-0 z-40 transition-colors">
       {/* Tier 1: Main Header Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-15 flex items-center justify-between gap-4">
-        {/* Brand Logo + Portal Tag */}
+        {/* Brand Logo */}
         <div className="flex items-center gap-3 shrink-0">
           <Link to="/" className="flex items-center gap-2.5 group">
             <div className="w-8 h-8 rounded bg-primary text-on-primary flex items-center justify-center transition-transform group-hover:scale-105">
@@ -138,13 +131,6 @@ export function Navbar() {
               Dispatch<span className="text-accent">Pro</span>
             </span>
           </Link>
-
-          {portalLabel && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-container-low hairline text-[11px] font-medium text-ink-variant">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-              <span>{portalLabel}</span>
-            </div>
-          )}
         </div>
 
         {/* Center: Quick Tracking Search (When Logged In) */}
@@ -154,7 +140,7 @@ export function Navbar() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-variant/50 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search tracking ID (e.g. LM-2026-000001)..."
+                placeholder="Search tracking ID (e.g. ORD-1724508920123)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-container-low text-xs text-ink placeholder:text-ink-variant/50 rounded-full pl-9 pr-4 py-2 hairline focus:outline-none focus:bg-container-lowest focus:border-primary transition-all"
@@ -169,11 +155,34 @@ export function Navbar() {
         <div className="flex items-center gap-3 shrink-0">
           {isAuthenticated ? (
             <>
-              {/* Customer Quick Action */}
-              {user?.role === 'CUSTOMER' && (
+              {/* Agent Duty Toggle in Header */}
+              {user?.role === 'AGENT' && (
+                <button
+                  type="button"
+                  onClick={handleToggleAgentDuty}
+                  disabled={isTogglingDuty}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full hairline text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                    user?.isAvailable !== false
+                      ? 'bg-success-soft border-success/40 text-success hover:bg-success-soft/80'
+                      : 'bg-container-high border-hairline text-ink-variant hover:bg-container-high/70'
+                  }`}
+                  title="Click to toggle your duty availability"
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      user?.isAvailable !== false ? 'bg-success animate-pulse' : 'bg-ink-variant/50'
+                    }`}
+                  />
+                  <span>{user?.isAvailable !== false ? 'Available' : 'Off-Duty'}</span>
+                  <Power className="w-3 h-3 ml-0.5 opacity-60" />
+                </button>
+              )}
+
+              {/* Admin Create Shipment Quick CTA */}
+              {user?.role === 'ADMIN' && (
                 <Link to="/app/new" className="hidden sm:inline-flex">
                   <Button variant="primary" size="sm" leftIcon={<PlusCircle className="w-3.5 h-3.5" />}>
-                    New Shipment
+                    Create Shipment
                   </Button>
                 </Link>
               )}
@@ -226,40 +235,38 @@ export function Navbar() {
                             Verify Email
                           </Link>
                         )}
-                        <span className="text-[10px] bg-container-high text-ink px-1.5 py-0.5 rounded font-mono">
-                          {user?.role}
-                        </span>
                       </div>
                     </div>
 
-                    {/* Menu links */}
-                    <div className="py-1">
-                      <Link
-                        to="/quote"
-                        onClick={() => setIsProfileOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-xs text-ink hover:bg-container-low transition-colors"
-                      >
-                        <Calculator className="w-3.5 h-3.5 text-ink-variant" />
-                        <span>Shipping Rate Calculator</span>
-                      </Link>
-
-                      {user?.role === 'CUSTOMER' && (
-                        <Link
-                          to="/app/new"
-                          onClick={() => setIsProfileOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-2 text-xs text-ink hover:bg-container-low transition-colors sm:hidden"
+                    {/* Agent Duty Toggle in dropdown */}
+                    {user?.role === 'AGENT' && (
+                      <div className="p-2 border-b border-hairline">
+                        <button
+                          onClick={() => {
+                            handleToggleAgentDuty();
+                            setIsProfileOpen(false);
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs rounded hover:bg-container-low transition-colors cursor-pointer"
                         >
-                          <PlusCircle className="w-3.5 h-3.5 text-ink-variant" />
-                          <span>Book New Shipment</span>
-                        </Link>
-                      )}
-                    </div>
+                          <span className="text-ink font-medium">Duty Status</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              user?.isAvailable !== false
+                                ? 'bg-success-soft text-success'
+                                : 'bg-container-high text-ink-variant'
+                            }`}
+                          >
+                            {user?.isAvailable !== false ? 'Available' : 'Off-Duty'}
+                          </span>
+                        </button>
+                      </div>
+                    )}
 
-                    {/* Sign out */}
-                    <div className="pt-1 border-t border-hairline">
+                    {/* Logout Option */}
+                    <div className="p-1">
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-danger hover:bg-danger-soft/40 transition-colors cursor-pointer text-left"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs text-danger hover:bg-danger-soft rounded transition-colors cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -270,21 +277,16 @@ export function Navbar() {
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-3">
-              <Link
-                to="/quote"
-                className="hidden sm:inline-flex text-xs font-semibold text-ink-variant hover:text-ink transition-colors"
-              >
-                Rate Calculator
-              </Link>
-              <Link to="/login">
-                <Button variant="secondary" size="sm">
-                  Sign In
+            /* Unauthenticated Visitor Options */
+            <div className="flex items-center gap-2">
+              <Link to="/quote">
+                <Button variant="secondary" size="sm" leftIcon={<Calculator className="w-3.5 h-3.5" />}>
+                  Rate Calculator
                 </Button>
               </Link>
-              <Link to="/register">
+              <Link to="/login">
                 <Button variant="primary" size="sm">
-                  Register
+                  Sign In
                 </Button>
               </Link>
             </div>
@@ -292,27 +294,31 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Tier 2: Secondary Sub-Navigation Tab Bar (Authenticated Only) */}
-      {showSubNav && (
-        <div className="border-t border-hairline bg-surface overflow-x-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1 sm:gap-2">
-            {navTabs.map((tab) => {
-              const active = isTabActive(tab.path);
-              return (
-                <Link
-                  key={tab.path}
-                  to={tab.path}
-                  className={`flex items-center gap-2 px-3.5 py-2.5 text-xs font-medium border-b-2 transition-all shrink-0 ${
-                    active
-                      ? 'border-primary text-ink font-semibold'
-                      : 'border-transparent text-ink-variant hover:text-ink hover:border-outline-variant'
-                  }`}
-                >
-                  <span className={active ? 'text-primary' : 'text-ink-variant'}>{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </Link>
-              );
-            })}
+      {/* Tier 2: Only Rendered for ADMIN Console */}
+      {showAdminSubNav && (
+        <div className="bg-surface hairline border-t border-b-0 border-x-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
+              {adminNavTabs.map((tab) => {
+                const active = isTabActive(tab.path);
+                return (
+                  <Link
+                    key={tab.path}
+                    to={tab.path}
+                    className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-all shrink-0 cursor-pointer ${
+                      active
+                        ? 'bg-container-lowest text-ink hairline shadow-xs font-bold'
+                        : 'text-ink-variant hover:text-ink hover:bg-container-low'
+                    }`}
+                  >
+                    <span className={active ? 'text-primary' : 'text-ink-variant/70'}>
+                      {tab.icon}
+                    </span>
+                    <span>{tab.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
         </div>
       )}

@@ -92,10 +92,12 @@ export function CustomerDashboardPage() {
         {/* Dashboard Header Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="label-caps text-xs text-ink-variant">Customer Portal</div>
             <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
               My Shipments
             </h1>
+            <p className="text-xs text-ink-variant mt-0.5">
+              Track, search, and manage your outgoing courier deliveries.
+            </p>
           </div>
 
           <Link to="/app/new">

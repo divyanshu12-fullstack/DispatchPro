@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '../../api/orders.api.js';
+import { authApi } from '../../api/auth.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { StatusChip } from '../../components/domain/StatusChip.jsx';
 import { Button } from '../../components/ui/Button.jsx';
@@ -25,6 +26,7 @@ import {
   Navigation,
   CheckCircle2,
   Compass,
+  Power,
 } from 'lucide-react';
 
 const ACTIVE_STATUSES = new Set([
@@ -35,12 +37,13 @@ const ACTIVE_STATUSES = new Set([
 ]);
 
 export function AgentDashboardPage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
   const [activeTab, setActiveTab] = useState('ACTIVE'); // 'ACTIVE' | 'HISTORY'
   const [searchInput, setSearchInput] = useState('');
+  const [isTogglingDuty, setIsTogglingDuty] = useState(false);
 
   // Modals state
   const [otpModalOrder, setOtpModalOrder] = useState(null);
@@ -94,6 +97,24 @@ export function AgentDashboardPage() {
     }
   };
 
+  // Agent Self-Availability Toggle
+  const handleToggleMyDuty = async () => {
+    setIsTogglingDuty(true);
+    const targetState = !(user?.isAvailable !== false);
+    try {
+      await authApi.updateMyAvailability(targetState);
+      updateUser({ isAvailable: targetState });
+      toast.success(
+        `Duty status updated: You are now ${targetState ? 'ONLINE & AVAILABLE for dispatches' : 'OFF-DUTY'}.`
+      );
+      refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Failed to update duty status.'));
+    } finally {
+      setIsTogglingDuty(false);
+    }
+  };
+
   const openGoogleMaps = (e, address, pincode) => {
     e.stopPropagation();
     const query = encodeURIComponent(`${address || ''} ${pincode || ''}`.trim());
@@ -114,10 +135,25 @@ export function AgentDashboardPage() {
                 <h1 className="font-display font-bold text-base text-ink leading-tight">
                   {user?.fullName || 'Field Courier'}
                 </h1>
-                <div className="flex items-center gap-1.5 text-xs text-ink-variant mt-0.5">
-                  <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                  <span className="font-medium text-success text-[11px]">On Duty · Mobile Mode</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleMyDuty}
+                  disabled={isTogglingDuty}
+                  className={`mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full hairline text-[11px] font-bold transition-all cursor-pointer shadow-xs ${
+                    user?.isAvailable !== false
+                      ? 'bg-success-soft border-success/40 text-success hover:bg-success-soft/80'
+                      : 'bg-container-high border-hairline text-ink-variant hover:bg-container-high/70'
+                  }`}
+                  title="Tap to toggle your duty availability"
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      user?.isAvailable !== false ? 'bg-success animate-pulse' : 'bg-ink-variant/50'
+                    }`}
+                  />
+                  <span>{user?.isAvailable !== false ? 'Available (Online)' : 'Off-Duty (Paused)'}</span>
+                  <Power className="w-3 h-3 ml-0.5 opacity-60" />
+                </button>
               </div>
             </div>
 
