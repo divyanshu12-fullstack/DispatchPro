@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router';
 import { ordersApi } from '../../api/orders.api.js';
-import { QuoteFormFields } from '../../components/domain/QuoteFormFields.jsx';
 import { PriceBreakdown } from '../../components/domain/PriceBreakdown.jsx';
-import { PaymentChooser } from '../../components/domain/PaymentChooser.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
-import { Textarea } from '../../components/ui/Textarea.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { formatCurrency, formatDate } from '../../lib/format.js';
 import { ORDER_TYPES, GSTIN_REGEX } from '../../lib/constants.js';
@@ -22,32 +19,42 @@ import {
   Calendar,
   Copy,
   Check,
+  Banknote,
+  Scale,
 } from 'lucide-react';
 
 function getInitialFormData() {
   const defaultValues = {
-    // Step 1: Addresses
-    pickupPincode: '110001',
-    pickupAddress: '',
-    dropPincode: '110018',
-    dropAddress: '',
-
-    // Step 2: Parcel Specs
+    // Shipment Type
     orderType: ORDER_TYPES.B2C,
+
+    // Step 1: Pickup Location
+    pickupCompanyName: '',
+    pickupGstin: '',
+    pickupBuilding: 'Plot 42, 3rd Floor',
+    pickupStreet: 'Cyber City, Phase 2',
+    pickupCity: 'Gurugram',
+    pickupState: 'Haryana',
+    pickupPincode: '122001',
+
+    // Step 1: Drop Destination
+    dropCompanyName: '',
+    dropGstin: '',
+    dropBuilding: 'Shop 14, Main Market',
+    dropStreet: 'Near Clock Tower',
+    dropCity: 'New Delhi',
+    dropState: 'Delhi',
+    dropPincode: '110001',
+
+    // Step 2: Parcel Specs & Payment
     actualWeightKg: '1.5',
     lengthCm: '20',
     breadthCm: '15',
     heightCm: '10',
-    isCOD: false,
-    declaredValue: '',
+    isCOD: true,
+    declaredValue: '1500',
 
-    // Step 3: B2B Business Details
-    pickupCompanyName: '',
-    pickupGstin: '',
-    dropCompanyName: '',
-    dropGstin: '',
-
-    // Step 4: Schedule & Payment
+    // Step 3: Target Delivery Schedule
     scheduledDeliveryDate: '',
   };
 
@@ -67,6 +74,10 @@ function getInitialFormData() {
         heightCm: String(parsed.heightCm || defaultValues.heightCm),
         isCOD: Boolean(parsed.isCOD),
         declaredValue: String(parsed.declaredValue || ''),
+        pickupCompanyName: parsed.pickupCompanyName || '',
+        pickupGstin: parsed.pickupGstin || '',
+        dropCompanyName: parsed.dropCompanyName || '',
+        dropGstin: parsed.dropGstin || '',
       };
     }
   } catch {
@@ -106,20 +117,66 @@ export function CreateOrderWizardPage() {
     }
   };
 
-  // Step 1 Validation: Addresses
+  // Helper to compose full address string
+  const composeAddress = (building, street, city, state) => {
+    return [building, street, city, state]
+      .map((s) => (s || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  };
+
+  // Step 1 Validation: Addresses & B2B Invoicing
   const validateStep1 = () => {
     const errors = {};
-    if (!formData.pickupPincode || formData.pickupPincode.length !== 6) {
-      errors.pickupPincode = 'Valid 6-digit Delhi NCR origin pincode required';
+
+    // Pickup checks
+    if (!formData.pickupBuilding.trim()) {
+      errors.pickupBuilding = 'House / Building / Floor is required';
     }
-    if (!formData.pickupAddress.trim() || formData.pickupAddress.trim().length < 5) {
-      errors.pickupAddress = 'Full pickup street address is required (min 5 chars)';
+    if (!formData.pickupStreet.trim()) {
+      errors.pickupStreet = 'Street / Area / Landmark is required';
     }
-    if (!formData.dropPincode || formData.dropPincode.length !== 6) {
-      errors.dropPincode = 'Valid 6-digit Delhi NCR destination pincode required';
+    if (!formData.pickupCity.trim()) {
+      errors.pickupCity = 'City / District is required';
     }
-    if (!formData.dropAddress.trim() || formData.dropAddress.trim().length < 5) {
-      errors.dropAddress = 'Full delivery street address is required (min 5 chars)';
+    if (!formData.pickupState.trim()) {
+      errors.pickupState = 'State is required';
+    }
+    if (!formData.pickupPincode || formData.pickupPincode.trim().length !== 6) {
+      errors.pickupPincode = 'Valid 6-digit origin pincode required';
+    }
+
+    // Drop destination checks
+    if (!formData.dropBuilding.trim()) {
+      errors.dropBuilding = 'House / Unit / Building is required';
+    }
+    if (!formData.dropStreet.trim()) {
+      errors.dropStreet = 'Street / Area / Landmark is required';
+    }
+    if (!formData.dropCity.trim()) {
+      errors.dropCity = 'City / District is required';
+    }
+    if (!formData.dropState.trim()) {
+      errors.dropState = 'State is required';
+    }
+    if (!formData.dropPincode || formData.dropPincode.trim().length !== 6) {
+      errors.dropPincode = 'Valid 6-digit destination pincode required';
+    }
+
+    // B2B Commercial Fields validation
+    if (formData.orderType === ORDER_TYPES.B2B) {
+      if (!formData.pickupCompanyName.trim()) {
+        errors.pickupCompanyName = 'Sender Company Name is required for B2B';
+      }
+      if (!formData.pickupGstin.trim() || !GSTIN_REGEX.test(formData.pickupGstin.trim())) {
+        errors.pickupGstin = 'Valid 15-digit GSTIN is required (e.g. 07AAAAA0000A1Z5)';
+      }
+      if (!formData.dropCompanyName.trim()) {
+        errors.dropCompanyName = 'Recipient Company Name is required for B2B';
+      }
+      if (!formData.dropGstin.trim() || !GSTIN_REGEX.test(formData.dropGstin.trim())) {
+        errors.dropGstin = 'Valid 15-digit GSTIN is required (e.g. 08BBBBB0000B1Z5)';
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -129,17 +186,26 @@ export function CreateOrderWizardPage() {
     return true;
   };
 
-  // Step 2 Validation: Parcel Specs
+  // Step 2 Validation: Parcel Specs & Payment
   const validateStep2 = () => {
     const errors = {};
-    if (!formData.actualWeightKg || parseFloat(formData.actualWeightKg) <= 0) {
-      errors.actualWeightKg = 'Weight must be > 0 kg';
+    const w = parseFloat(formData.actualWeightKg);
+    const l = parseFloat(formData.lengthCm);
+    const b = parseFloat(formData.breadthCm);
+    const h = parseFloat(formData.heightCm);
+
+    if (!formData.actualWeightKg || isNaN(w) || w <= 0) {
+      errors.actualWeightKg = 'Weight must be greater than 0 kg';
     }
-    if (!formData.lengthCm || parseFloat(formData.lengthCm) <= 0) errors.lengthCm = 'Required';
-    if (!formData.breadthCm || parseFloat(formData.breadthCm) <= 0) errors.breadthCm = 'Required';
-    if (!formData.heightCm || parseFloat(formData.heightCm) <= 0) errors.heightCm = 'Required';
-    if (formData.isCOD && (!formData.declaredValue || parseFloat(formData.declaredValue) <= 0)) {
-      errors.declaredValue = 'Parcel value required for COD orders';
+    if (!formData.lengthCm || isNaN(l) || l <= 0) errors.lengthCm = 'Length is required';
+    if (!formData.breadthCm || isNaN(b) || b <= 0) errors.breadthCm = 'Breadth is required';
+    if (!formData.heightCm || isNaN(h) || h <= 0) errors.heightCm = 'Height is required';
+
+    if (formData.isCOD) {
+      const val = parseFloat(formData.declaredValue);
+      if (!formData.declaredValue || isNaN(val) || val <= 0) {
+        errors.declaredValue = 'Parcel value is required for Cash on Delivery (COD)';
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -149,32 +215,7 @@ export function CreateOrderWizardPage() {
     return true;
   };
 
-  // Step 3 Validation: B2B Commercial Details
-  const validateStep3 = () => {
-    if (formData.orderType !== ORDER_TYPES.B2B) return true;
-
-    const errors = {};
-    if (!formData.pickupCompanyName.trim()) {
-      errors.pickupCompanyName = 'Pickup company name is required for B2B';
-    }
-    if (!formData.pickupGstin.trim() || !GSTIN_REGEX.test(formData.pickupGstin.trim())) {
-      errors.pickupGstin = 'Valid 15-digit GSTIN is required (e.g. 07AAAAA0000A1Z5)';
-    }
-    if (!formData.dropCompanyName.trim()) {
-      errors.dropCompanyName = 'Recipient company name is required for B2B';
-    }
-    if (!formData.dropGstin.trim() || !GSTIN_REGEX.test(formData.dropGstin.trim())) {
-      errors.dropGstin = 'Valid 15-digit GSTIN is required (e.g. 07BBBBB0000B1Z5)';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
-      return false;
-    }
-    return true;
-  };
-
-  // Fetch live price quote before Step 4 Review
+  // Fetch live price quote before Step 3 Review
   const fetchReviewQuote = async () => {
     setIsQuoteLoading(true);
     try {
@@ -183,14 +224,15 @@ export function CreateOrderWizardPage() {
         pickupPincode: formData.pickupPincode.trim(),
         dropPincode: formData.dropPincode.trim(),
         actualWeightKg: parseFloat(formData.actualWeightKg),
-        lengthCm: parseFloat(formData.lengthCm),
-        breadthCm: parseFloat(formData.breadthCm),
-        heightCm: parseFloat(formData.heightCm),
+        dimensions: {
+          lengthCm: parseFloat(formData.lengthCm),
+          breadthCm: parseFloat(formData.breadthCm),
+          heightCm: parseFloat(formData.heightCm),
+        },
         isCOD: Boolean(formData.isCOD),
+        declaredValue: formData.isCOD ? parseFloat(formData.declaredValue || '1500') : null,
       };
-      if (formData.isCOD && formData.declaredValue) {
-        payload.declaredValue = parseFloat(formData.declaredValue);
-      }
+
       if (formData.orderType === ORDER_TYPES.B2B) {
         payload.pickupCompanyName = formData.pickupCompanyName.trim();
         payload.pickupGstin = formData.pickupGstin.trim().toUpperCase();
@@ -201,6 +243,9 @@ export function CreateOrderWizardPage() {
       const res = await ordersApi.getQuote(payload);
       setQuoteResult(res);
     } catch (err) {
+      if (err.details && Object.keys(err.details).length > 0) {
+        setFieldErrors(err.details);
+      }
       toast.error(getErrorMessage(err, 'Could not calculate quote for the given pincodes.'));
     } finally {
       setIsQuoteLoading(false);
@@ -216,24 +261,14 @@ export function CreateOrderWizardPage() {
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (!validateStep2()) return;
-      if (formData.orderType === ORDER_TYPES.B2B) {
-        setCurrentStep(3);
-      } else {
-        await fetchReviewQuote();
-        setCurrentStep(4);
-      }
-    } else if (currentStep === 3) {
-      if (!validateStep3()) return;
       await fetchReviewQuote();
-      setCurrentStep(4);
+      setCurrentStep(3);
     }
   };
 
   const handleBack = () => {
     setFieldErrors({});
-    if (currentStep === 4 && formData.orderType !== ORDER_TYPES.B2B) {
-      setCurrentStep(2);
-    } else if (currentStep > 1) {
+    if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
   };
@@ -248,23 +283,36 @@ export function CreateOrderWizardPage() {
 
     setIsSubmitting(true);
     try {
+      const pickupAddress = composeAddress(
+        formData.pickupBuilding,
+        formData.pickupStreet,
+        formData.pickupCity,
+        formData.pickupState
+      );
+
+      const dropAddress = composeAddress(
+        formData.dropBuilding,
+        formData.dropStreet,
+        formData.dropCity,
+        formData.dropState
+      );
+
       const payload = {
         orderType: formData.orderType,
         pickupPincode: formData.pickupPincode.trim(),
-        pickupAddress: formData.pickupAddress.trim(),
+        pickupAddress,
         dropPincode: formData.dropPincode.trim(),
-        dropAddress: formData.dropAddress.trim(),
+        dropAddress,
         actualWeightKg: parseFloat(formData.actualWeightKg),
-        lengthCm: parseFloat(formData.lengthCm),
-        breadthCm: parseFloat(formData.breadthCm),
-        heightCm: parseFloat(formData.heightCm),
+        dimensions: {
+          lengthCm: parseFloat(formData.lengthCm),
+          breadthCm: parseFloat(formData.breadthCm),
+          heightCm: parseFloat(formData.heightCm),
+        },
         isCOD: Boolean(formData.isCOD),
+        declaredValue: formData.isCOD ? parseFloat(formData.declaredValue || '1500') : null,
         scheduledDeliveryDate: new Date(formData.scheduledDeliveryDate).toISOString(),
       };
-
-      if (formData.isCOD && formData.declaredValue) {
-        payload.declaredValue = parseFloat(formData.declaredValue);
-      }
 
       if (formData.orderType === ORDER_TYPES.B2B) {
         payload.pickupCompanyName = formData.pickupCompanyName.trim();
@@ -275,10 +323,12 @@ export function CreateOrderWizardPage() {
 
       const order = await ordersApi.createOrder(payload);
       setCreatedOrder(order);
-      toast.success(`Order ${order.orderNumber} placed successfully!`);
+      toast.success(`Shipment ${order.orderNumber} created successfully!`);
     } catch (err) {
       if (err.details && Object.keys(err.details).length > 0) {
         setFieldErrors(err.details);
+        const firstErrKey = Object.keys(err.details)[0];
+        toast.error(`Validation Failed: ${err.details[firstErrKey]}`);
       } else {
         toast.error(getErrorMessage(err, 'Failed to create shipment order.'));
       }
@@ -303,9 +353,9 @@ export function CreateOrderWizardPage() {
     return (
       <div className="min-h-screen bg-surface py-12 sm:py-16">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
-          <div className="bg-container-lowest hairline rounded-xl p-8 sm:p-12 shadow-card text-center space-y-6">
-            <div className="w-14 h-14 rounded-full bg-accent/20 text-accent flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 text-primary" />
+          <div className="bg-container-lowest hairline rounded-2xl p-8 sm:p-12 shadow-card text-center space-y-6">
+            <div className="w-16 h-16 rounded-full bg-accent/20 text-accent flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 className="w-10 h-10 text-primary" />
             </div>
 
             <div>
@@ -313,13 +363,13 @@ export function CreateOrderWizardPage() {
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
                 Shipment Booked Successfully!
               </h1>
-              <p className="text-sm text-ink-variant mt-2 leading-relaxed">
-                Your shipment has been registered and scheduled for dispatch. A confirmation email and tracking link have been dispatched.
+              <p className="text-sm text-ink-variant mt-2 leading-relaxed max-w-md mx-auto">
+                Your consignment has been registered in the dispatch queue. A tracking confirmation email has been dispatched.
               </p>
             </div>
 
             {/* Tracking Number Card */}
-            <div className="p-6 bg-container-low hairline rounded-lg flex flex-col items-center justify-center space-y-2">
+            <div className="p-6 bg-container-low hairline rounded-xl flex flex-col items-center justify-center space-y-2">
               <div className="label-caps text-[10px] text-ink-variant">Waybill Tracking Number</div>
               <div className="flex items-center gap-3">
                 <span className="font-display text-2xl sm:text-3xl font-bold text-ink tabular tracking-tight">
@@ -328,7 +378,7 @@ export function CreateOrderWizardPage() {
                 <button
                   type="button"
                   onClick={handleCopyOrderNumber}
-                  className="p-1.5 rounded hairline bg-container-lowest hover:bg-container text-ink-variant hover:text-ink cursor-pointer transition-colors"
+                  className="p-2 rounded-lg hairline bg-container-lowest hover:bg-container text-ink-variant hover:text-ink cursor-pointer transition-colors shadow-xs"
                   title="Copy tracking number"
                 >
                   {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
@@ -337,7 +387,7 @@ export function CreateOrderWizardPage() {
             </div>
 
             {/* Summary Details */}
-            <div className="grid grid-cols-2 gap-4 text-left p-4 bg-container-lowest hairline rounded-lg text-xs">
+            <div className="grid grid-cols-2 gap-4 text-left p-4 bg-container-lowest hairline rounded-xl text-xs">
               <div>
                 <span className="label-caps text-[10px] text-ink-variant">Delivery Target</span>
                 <div className="font-semibold text-ink mt-0.5">
@@ -345,7 +395,7 @@ export function CreateOrderWizardPage() {
                 </div>
               </div>
               <div>
-                <span className="label-caps text-[10px] text-ink-variant">Total Amount</span>
+                <span className="label-caps text-[10px] text-ink-variant">Total Freight Cost</span>
                 <div className="font-bold text-ink tabular mt-0.5">
                   {formatCurrency(createdOrder.pricing?.totalAmount)}
                 </div>
@@ -371,15 +421,19 @@ export function CreateOrderWizardPage() {
     );
   }
 
-  // Stepper Definition
+  // Stepper Definition (Unified 3-Step Wizard)
   const steps = [
-    { num: 1, label: 'Addresses', icon: <MapPin className="w-3.5 h-3.5" /> },
-    { num: 2, label: 'Parcel Specs', icon: <Box className="w-3.5 h-3.5" /> },
-    ...(formData.orderType === ORDER_TYPES.B2B
-      ? [{ num: 3, label: 'Business Details', icon: <Building className="w-3.5 h-3.5" /> }]
-      : []),
-    { num: 4, label: 'Review & Pay', icon: <CreditCard className="w-3.5 h-3.5" /> },
+    { num: 1, label: 'Addresses & Invoicing', icon: <MapPin className="w-3.5 h-3.5" /> },
+    { num: 2, label: 'Parcel Specs & Payment', icon: <Box className="w-3.5 h-3.5" /> },
+    { num: 3, label: 'Review & Schedule', icon: <CreditCard className="w-3.5 h-3.5" /> },
   ];
+
+  // Live volumetric computation for Step 2
+  const l = parseFloat(formData.lengthCm) || 0;
+  const b = parseFloat(formData.breadthCm) || 0;
+  const h = parseFloat(formData.heightCm) || 0;
+  const volumetricKg = l > 0 && b > 0 && h > 0 ? ((l * b * h) / 5000).toFixed(2) : '0.00';
+  const billableKg = Math.max(parseFloat(formData.actualWeightKg) || 0, parseFloat(volumetricKg) || 0).toFixed(2);
 
   return (
     <div className="min-h-screen bg-surface py-8 sm:py-12">
@@ -388,7 +442,7 @@ export function CreateOrderWizardPage() {
         <div className="mb-8">
           <Link
             to="/app"
-            className="inline-flex items-center gap-1 text-xs text-ink-variant hover:text-ink transition-colors mb-2"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-variant hover:text-ink transition-colors mb-2"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Dashboard</span>
@@ -396,13 +450,13 @@ export function CreateOrderWizardPage() {
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
             Book a Shipment
           </h1>
-          <p className="text-sm text-ink-variant">
-            Complete the 4-step wizard to dispatch parcels across Delhi NCR.
+          <p className="text-sm text-ink-variant mt-0.5">
+            Fill in the shipping details to schedule doorstep pickup and courier delivery.
           </p>
         </div>
 
         {/* Wizard Stepper Progress Bar */}
-        <div className="bg-container-lowest hairline rounded-lg p-4 mb-8 shadow-card overflow-x-auto">
+        <div className="bg-container-lowest hairline rounded-2xl p-4 mb-8 shadow-card overflow-x-auto">
           <div className="flex items-center justify-between min-w-[320px]">
             {steps.map((s, idx) => {
               const isActive = currentStep === s.num;
@@ -410,20 +464,20 @@ export function CreateOrderWizardPage() {
 
               return (
                 <React.Fragment key={s.num}>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                         isActive
-                          ? 'bg-primary text-on-primary ring-4 ring-container-low'
+                          ? 'bg-primary text-on-primary ring-4 ring-container-low shadow-sm'
                           : isPast
                           ? 'bg-primary text-on-primary'
                           : 'bg-container-high text-ink-variant/60'
                       }`}
                     >
-                      {isPast ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : s.num}
+                      {isPast ? <Check className="w-4 h-4 stroke-[2.5]" /> : s.num}
                     </div>
                     <span
-                      className={`text-xs font-medium ${
+                      className={`text-xs font-semibold ${
                         isActive ? 'text-ink font-bold' : isPast ? 'text-ink' : 'text-ink-variant/60'
                       }`}
                     >
@@ -433,7 +487,7 @@ export function CreateOrderWizardPage() {
 
                   {idx < steps.length - 1 && (
                     <div
-                      className={`flex-1 h-[2px] mx-3 ${
+                      className={`flex-1 h-[2px] mx-4 transition-colors ${
                         isPast ? 'bg-primary' : 'bg-hairline'
                       }`}
                     />
@@ -445,74 +499,240 @@ export function CreateOrderWizardPage() {
         </div>
 
         {/* Wizard Step Content Card */}
-        <div className="bg-container-lowest hairline rounded-xl p-6 sm:p-8 shadow-card">
-          {/* STEP 1: Addresses */}
+        <div className="bg-container-lowest hairline rounded-2xl p-6 sm:p-8 shadow-card">
+          {/* STEP 1: Addresses & Invoicing */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
                 <h2 className="font-display text-lg font-bold text-ink">Origin & Destination</h2>
                 <p className="text-xs text-ink-variant">
-                  Enter complete pickup and doorstep delivery addresses in Delhi NCR.
+                  Enter structured address details and GSTIN invoicing information.
                 </p>
               </div>
 
-              <div className="space-y-6">
-                {/* Pickup Block */}
-                <div className="p-4 bg-container-low hairline rounded-lg space-y-4">
-                  <div className="label-caps text-xs text-primary font-bold flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Pickup Location</span>
-                  </div>
+              {/* Shipment Type Selector (B2C vs B2B) */}
+              <div className="space-y-2">
+                <label className="block label-caps text-ink-variant">Shipment Category</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('orderType', ORDER_TYPES.B2C)}
+                    className={`p-3.5 rounded-xl hairline cursor-pointer transition-all text-left flex items-start gap-3 ${
+                      formData.orderType === ORDER_TYPES.B2C
+                        ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
+                        : 'bg-container-low hover:bg-container'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                        formData.orderType === ORDER_TYPES.B2C
+                          ? 'border-primary bg-primary text-on-primary'
+                          : 'border-outline bg-container-lowest'
+                      }`}
+                    >
+                      {formData.orderType === ORDER_TYPES.B2C && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs text-ink">B2C (Retail / Personal)</div>
+                      <div className="text-[11px] text-ink-variant mt-0.5">Direct doorstep delivery to individuals</div>
+                    </div>
+                  </button>
 
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('orderType', ORDER_TYPES.B2B)}
+                    className={`p-3.5 rounded-xl hairline cursor-pointer transition-all text-left flex items-start gap-3 ${
+                      formData.orderType === ORDER_TYPES.B2B
+                        ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
+                        : 'bg-container-low hover:bg-container'
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                        formData.orderType === ORDER_TYPES.B2B
+                          ? 'border-primary bg-primary text-on-primary'
+                          : 'border-outline bg-container-lowest'
+                      }`}
+                    >
+                      {formData.orderType === ORDER_TYPES.B2B && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs text-ink">B2B (Commercial / GST)</div>
+                      <div className="text-[11px] text-ink-variant mt-0.5">Business shipment with GSTIN invoicing</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* 1. Pickup Origin Address Card */}
+              <div className="p-5 bg-container-low/60 hairline rounded-xl space-y-4">
+                <div className="label-caps text-xs text-primary font-bold flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  <span>Pickup Location (Origin)</span>
+                </div>
+
+                {/* B2B Sender Company & GSTIN */}
+                {formData.orderType === ORDER_TYPES.B2B && (
+                  <div className="p-4 bg-container-lowest hairline rounded-xl space-y-3 border-l-2 border-l-primary">
+                    <div className="label-caps text-[10px] text-ink font-bold flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-primary" />
+                      <span>Sender Business Details (B2B)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="Sender Company Name"
+                        placeholder="e.g. Alpha Exports Pvt Ltd"
+                        value={formData.pickupCompanyName}
+                        onChange={(e) => handleFieldChange('pickupCompanyName', e.target.value)}
+                        error={fieldErrors.pickupCompanyName}
+                        required
+                      />
+                      <Input
+                        label="Sender GSTIN"
+                        placeholder="07AAAAA0000A1Z5"
+                        value={formData.pickupGstin}
+                        onChange={(e) => handleFieldChange('pickupGstin', e.target.value.toUpperCase())}
+                        error={fieldErrors.pickupGstin}
+                        maxLength={15}
+                        helperText="15-digit Indian GSTIN"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Structured Address Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
-                    label="Pickup Pincode"
-                    placeholder="e.g. 110001"
+                    label="Building / House / Flat No."
+                    placeholder="e.g. Plot 42, 3rd Floor"
+                    value={formData.pickupBuilding}
+                    onChange={(e) => handleFieldChange('pickupBuilding', e.target.value)}
+                    error={fieldErrors.pickupBuilding}
+                    required
+                  />
+                  <Input
+                    label="Street / Area / Landmark"
+                    placeholder="e.g. Cyber City, Phase 2"
+                    value={formData.pickupStreet}
+                    onChange={(e) => handleFieldChange('pickupStreet', e.target.value)}
+                    error={fieldErrors.pickupStreet}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Input
+                    label="City / District"
+                    placeholder="e.g. Gurugram"
+                    value={formData.pickupCity}
+                    onChange={(e) => handleFieldChange('pickupCity', e.target.value)}
+                    error={fieldErrors.pickupCity}
+                    required
+                  />
+                  <Input
+                    label="State"
+                    placeholder="e.g. Haryana"
+                    value={formData.pickupState}
+                    onChange={(e) => handleFieldChange('pickupState', e.target.value)}
+                    error={fieldErrors.pickupState}
+                    required
+                  />
+                  <Input
+                    label="Pincode"
+                    placeholder="e.g. 122001"
                     value={formData.pickupPincode}
                     onChange={(e) => handleFieldChange('pickupPincode', e.target.value.slice(0, 6))}
                     error={fieldErrors.pickupPincode}
                     numericOnly
                     maxLength={6}
-                    helperText="Delhi NCR origin pincode"
                     required
                   />
+                </div>
+              </div>
 
-                  <Textarea
-                    label="Pickup Full Address"
-                    placeholder="Flat / Building no., Street, Landmark, Area..."
-                    rows={2}
-                    value={formData.pickupAddress}
-                    onChange={(e) => handleFieldChange('pickupAddress', e.target.value)}
-                    error={fieldErrors.pickupAddress}
+              {/* 2. Drop Destination Address Card */}
+              <div className="p-5 bg-container-low/60 hairline rounded-xl space-y-4">
+                <div className="label-caps text-xs text-primary font-bold flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4" />
+                  <span>Delivery Destination (Drop)</span>
+                </div>
+
+                {/* B2B Recipient Company & GSTIN */}
+                {formData.orderType === ORDER_TYPES.B2B && (
+                  <div className="p-4 bg-container-lowest hairline rounded-xl space-y-3 border-l-2 border-l-primary">
+                    <div className="label-caps text-[10px] text-ink font-bold flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-primary" />
+                      <span>Recipient Business Details (B2B)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Input
+                        label="Recipient Company Name"
+                        placeholder="e.g. Delta Retailers India Ltd"
+                        value={formData.dropCompanyName}
+                        onChange={(e) => handleFieldChange('dropCompanyName', e.target.value)}
+                        error={fieldErrors.dropCompanyName}
+                        required
+                      />
+                      <Input
+                        label="Recipient GSTIN"
+                        placeholder="08BBBBB0000B1Z5"
+                        value={formData.dropGstin}
+                        onChange={(e) => handleFieldChange('dropGstin', e.target.value.toUpperCase())}
+                        error={fieldErrors.dropGstin}
+                        maxLength={15}
+                        helperText="15-digit Indian GSTIN"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Structured Address Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Building / House / Unit / Shop No."
+                    placeholder="e.g. Shop 14, Main Market"
+                    value={formData.dropBuilding}
+                    onChange={(e) => handleFieldChange('dropBuilding', e.target.value)}
+                    error={fieldErrors.dropBuilding}
+                    required
+                  />
+                  <Input
+                    label="Street / Area / Landmark"
+                    placeholder="e.g. Near Clock Tower"
+                    value={formData.dropStreet}
+                    onChange={(e) => handleFieldChange('dropStreet', e.target.value)}
+                    error={fieldErrors.dropStreet}
                     required
                   />
                 </div>
 
-                {/* Drop Block */}
-                <div className="p-4 bg-container-low hairline rounded-lg space-y-4">
-                  <div className="label-caps text-xs text-primary font-bold flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Delivery Destination</span>
-                  </div>
-
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <Input
-                    label="Drop Pincode"
-                    placeholder="e.g. 110018"
+                    label="City / District"
+                    placeholder="e.g. Alwar City"
+                    value={formData.dropCity}
+                    onChange={(e) => handleFieldChange('dropCity', e.target.value)}
+                    error={fieldErrors.dropCity}
+                    required
+                  />
+                  <Input
+                    label="State"
+                    placeholder="e.g. Rajasthan"
+                    value={formData.dropState}
+                    onChange={(e) => handleFieldChange('dropState', e.target.value)}
+                    error={fieldErrors.dropState}
+                    required
+                  />
+                  <Input
+                    label="Pincode"
+                    placeholder="e.g. 301001"
                     value={formData.dropPincode}
                     onChange={(e) => handleFieldChange('dropPincode', e.target.value.slice(0, 6))}
                     error={fieldErrors.dropPincode}
                     numericOnly
                     maxLength={6}
-                    helperText="Delhi NCR destination pincode"
-                    required
-                  />
-
-                  <Textarea
-                    label="Drop Full Address"
-                    placeholder="House / Unit no., Street, Landmark, Area..."
-                    rows={2}
-                    value={formData.dropAddress}
-                    onChange={(e) => handleFieldChange('dropAddress', e.target.value)}
-                    error={fieldErrors.dropAddress}
                     required
                   />
                 </div>
@@ -520,93 +740,159 @@ export function CreateOrderWizardPage() {
             </div>
           )}
 
-          {/* STEP 2: Parcel Dimensions */}
+          {/* STEP 2: Parcel Specs & Payment */}
           {currentStep === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="font-display text-lg font-bold text-ink">Parcel Specifications</h2>
+                <h2 className="font-display text-lg font-bold text-ink">Parcel Specifications & Payment</h2>
                 <p className="text-xs text-ink-variant">
-                  Define weight, package size, and payment preferences.
+                  Define parcel dimensions, weight, and collection method.
                 </p>
               </div>
 
-              <QuoteFormFields
-                values={formData}
-                onChange={handleFieldChange}
-                errors={fieldErrors}
-                includeB2BFields={false}
-              />
+              {/* Weight & Dimensions */}
+              <div className="p-5 bg-container-low/60 hairline rounded-xl space-y-4">
+                <div className="label-caps text-xs text-primary font-bold flex items-center gap-1.5">
+                  <Scale className="w-4 h-4" />
+                  <span>Weight & Package Dimensions</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <Input
+                    label="Actual Weight (kg)"
+                    placeholder="1.5"
+                    value={formData.actualWeightKg}
+                    onChange={(e) => handleFieldChange('actualWeightKg', e.target.value)}
+                    error={fieldErrors.actualWeightKg}
+                    helperText="Scale weight in kg"
+                    required
+                  />
+
+                  <Input
+                    label="Length (cm)"
+                    placeholder="20"
+                    value={formData.lengthCm}
+                    onChange={(e) => handleFieldChange('lengthCm', e.target.value)}
+                    error={fieldErrors.lengthCm}
+                    required
+                  />
+
+                  <Input
+                    label="Breadth (cm)"
+                    placeholder="15"
+                    value={formData.breadthCm}
+                    onChange={(e) => handleFieldChange('breadthCm', e.target.value)}
+                    error={fieldErrors.breadthCm}
+                    required
+                  />
+
+                  <Input
+                    label="Height (cm)"
+                    placeholder="10"
+                    value={formData.heightCm}
+                    onChange={(e) => handleFieldChange('heightCm', e.target.value)}
+                    error={fieldErrors.heightCm}
+                    required
+                  />
+                </div>
+
+                {/* Live Volumetric Calculation Meter */}
+                <div className="p-3.5 bg-container-lowest hairline rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-ink-variant">Volumetric Weight:</span>{' '}
+                    <strong className="text-ink tabular">{volumetricKg} kg</strong>{' '}
+                    <span className="text-[10px] text-ink-variant/60">(L×B×H / 5000)</span>
+                  </div>
+                  <div>
+                    <span className="text-ink-variant">Billable Weight:</span>{' '}
+                    <strong className="text-primary tabular text-sm">{billableKg} kg</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Mode Chooser */}
+              <div className="p-5 bg-container-low/60 hairline rounded-xl space-y-4">
+                <div className="label-caps text-xs text-primary font-bold flex items-center gap-1.5">
+                  <Banknote className="w-4 h-4" />
+                  <span>Payment Method & COD</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Prepaid / Razorpay Option (Disabled & Unselectable) */}
+                  <div
+                    className="p-4 rounded-xl hairline bg-container-low/50 opacity-75 cursor-not-allowed flex items-start gap-3 select-none relative"
+                    title="Prepaid Razorpay integration is coming soon"
+                  >
+                    <div className="w-4 h-4 rounded-full border border-outline bg-container-high flex items-center justify-center mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-xs text-ink-variant">Prepaid / Non-COD</span>
+                        <span className="px-2 py-0.5 rounded bg-container-high text-ink-variant text-[9px] font-bold shrink-0">
+                          Razorpay Integration Coming Soon
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-ink-variant/70 mt-1">
+                        Amount settled upfront via UPI/Cards (Coming Soon).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Cash on Delivery (COD) Option (Active & Selected) */}
+                  <div
+                    onClick={() => handleFieldChange('isCOD', true)}
+                    className="p-4 rounded-xl hairline bg-container-lowest border-primary ring-1 ring-primary shadow-xs cursor-pointer transition-all flex items-start gap-3"
+                  >
+                    <div className="w-4 h-4 rounded-full border border-primary bg-primary text-on-primary flex items-center justify-center mt-0.5 shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-semibold text-xs text-ink flex items-center gap-1.5">
+                          <span>Cash on Delivery (COD)</span>
+                          <span className="px-1.5 py-0.2 rounded bg-accent/20 text-[#735c00] text-[9px] font-bold">
+                            Active
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-[11px] text-ink-variant mt-1">
+                        Courier collects cash payment from recipient at handover.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Parcel Value Input for COD */}
+                {formData.isCOD && (
+                  <div className="p-4 bg-container-lowest hairline rounded-xl space-y-2 border-l-2 border-l-accent">
+                    <Input
+                      label="Parcel Value (₹)"
+                      placeholder="e.g. 1500"
+                      value={formData.declaredValue}
+                      onChange={(e) => handleFieldChange('declaredValue', e.target.value)}
+                      error={fieldErrors.declaredValue}
+                      helperText="Amount to collect from the recipient upon doorstep delivery"
+                      required
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* STEP 3: B2B Commercial Invoicing (Conditional) */}
-          {currentStep === 3 && formData.orderType === ORDER_TYPES.B2B && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="font-display text-lg font-bold text-ink">Commercial Invoicing</h2>
-                <p className="text-xs text-ink-variant">
-                  Enter GSTIN details for tax-compliant commercial delivery.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Pickup Company Name"
-                  placeholder="Sender Corp Ltd."
-                  value={formData.pickupCompanyName}
-                  onChange={(e) => handleFieldChange('pickupCompanyName', e.target.value)}
-                  error={fieldErrors.pickupCompanyName}
-                  required
-                />
-
-                <Input
-                  label="Pickup GSTIN"
-                  placeholder="07AAAAA0000A1Z5"
-                  value={formData.pickupGstin}
-                  onChange={(e) => handleFieldChange('pickupGstin', e.target.value.toUpperCase())}
-                  error={fieldErrors.pickupGstin}
-                  helperText="15-digit GSTIN"
-                  maxLength={15}
-                  required
-                />
-
-                <Input
-                  label="Drop Company Name"
-                  placeholder="Recipient Pvt Ltd."
-                  value={formData.dropCompanyName}
-                  onChange={(e) => handleFieldChange('dropCompanyName', e.target.value)}
-                  error={fieldErrors.dropCompanyName}
-                  required
-                />
-
-                <Input
-                  label="Drop GSTIN"
-                  placeholder="07BBBBB0000B1Z5"
-                  value={formData.dropGstin}
-                  onChange={(e) => handleFieldChange('dropGstin', e.target.value.toUpperCase())}
-                  error={fieldErrors.dropGstin}
-                  helperText="15-digit GSTIN"
-                  maxLength={15}
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: Review, Schedule Date & Payment */}
-          {currentStep === 4 && (
+          {/* STEP 3: Review Rate Breakdown & Schedule Date */}
+          {currentStep === 3 && (
             <div className="space-y-6">
               <div>
                 <h2 className="font-display text-lg font-bold text-ink">Review & Confirmation</h2>
                 <p className="text-xs text-ink-variant">
-                  Inspect your calculated freight rate and select a delivery schedule.
+                  Inspect your calculated freight tariff and pick a scheduled delivery target date.
                 </p>
               </div>
 
               {/* Price Breakdown Preview */}
               {isQuoteLoading ? (
-                <div className="p-8 bg-container-low hairline rounded-lg text-center text-xs text-ink-variant">
-                  Calculating live shipping rate...
+                <div className="p-8 bg-container-low hairline rounded-xl text-center text-xs text-ink-variant">
+                  Calculating live shipping rate from rate cards...
                 </div>
               ) : quoteResult ? (
                 <PriceBreakdown
@@ -619,11 +905,36 @@ export function CreateOrderWizardPage() {
                 />
               ) : null}
 
+              {/* Address Summary Preview */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="p-4 bg-container-low/60 hairline rounded-xl space-y-1">
+                  <div className="label-caps text-[9px] text-primary font-bold">Pickup Origin</div>
+                  {formData.orderType === ORDER_TYPES.B2B && (
+                    <div className="font-bold text-ink">{formData.pickupCompanyName} (GSTIN: {formData.pickupGstin})</div>
+                  )}
+                  <div className="text-ink font-medium">
+                    {composeAddress(formData.pickupBuilding, formData.pickupStreet, formData.pickupCity, formData.pickupState)}
+                  </div>
+                  <div className="text-ink-variant text-[11px]">Pincode: {formData.pickupPincode}</div>
+                </div>
+
+                <div className="p-4 bg-container-low/60 hairline rounded-xl space-y-1">
+                  <div className="label-caps text-[9px] text-primary font-bold">Delivery Destination</div>
+                  {formData.orderType === ORDER_TYPES.B2B && (
+                    <div className="font-bold text-ink">{formData.dropCompanyName} (GSTIN: {formData.dropGstin})</div>
+                  )}
+                  <div className="text-ink font-medium">
+                    {composeAddress(formData.dropBuilding, formData.dropStreet, formData.dropCity, formData.dropState)}
+                  </div>
+                  <div className="text-ink-variant text-[11px]">Pincode: {formData.dropPincode}</div>
+                </div>
+              </div>
+
               {/* Scheduled Delivery Date Picker */}
-              <div className="p-5 bg-container-low hairline rounded-lg space-y-3">
+              <div className="p-5 bg-container-low/60 hairline rounded-xl space-y-3">
                 <div className="label-caps text-xs text-ink font-bold flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-primary" />
-                  <span>Target Delivery Date</span>
+                  <span>Target Delivery Schedule</span>
                 </div>
                 <Input
                   type="date"
@@ -635,13 +946,6 @@ export function CreateOrderWizardPage() {
                   required
                 />
               </div>
-
-              {/* Payment Mode Chooser */}
-              <PaymentChooser
-                isCOD={formData.isCOD}
-                onChange={(cod) => handleFieldChange('isCOD', cod)}
-                totalAmount={quoteResult?.pricing?.totalAmount || 0}
-              />
             </div>
           )}
 
@@ -662,7 +966,7 @@ export function CreateOrderWizardPage() {
               <div />
             )}
 
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <Button
                 type="button"
                 variant="primary"

@@ -32,7 +32,31 @@ router.get(
         phone: user.phone,
         role: user.role,
         isEmailVerified: user.isEmailVerified,
+        isAvailable: user.isAvailable,
       },
+    });
+  })
+);
+
+// Agent self-toggle availability
+router.patch(
+  '/me/availability',
+  authenticate,
+  requireRole('AGENT'),
+  asyncHandler(async (req, res) => {
+    const isAvailable = req.body?.isAvailable;
+    if (typeof isAvailable !== 'boolean') {
+      return res.status(422).json({ success: false, message: 'isAvailable must be a boolean' });
+    }
+    const { updateAgent } = await import('../services/agent.service.js');
+    const updated = await updateAgent({ agentId: req.user.id, input: { isAvailable } });
+    res.json({
+      success: true,
+      data: {
+        id: updated._id,
+        isAvailable: updated.isAvailable,
+      },
+      message: `Duty status updated to ${updated.isAvailable ? 'Available' : 'Off-Duty'}`,
     });
   })
 );

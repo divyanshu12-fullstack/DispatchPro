@@ -45,9 +45,18 @@ export const authApi = {
 
   /**
    * Fetch current authenticated session profile.
-   * @returns {Promise<{ id: string, email: string, fullName: string, phone: string, role: string, isEmailVerified: boolean }>}
+   * @returns {Promise<{ id: string, email: string, fullName: string, phone: string, role: string, isEmailVerified: boolean, isAvailable?: boolean }>}
    */
   getMe() {
     return apiClient.get('/auth/me');
+  },
+
+  /**
+   * Update courier's own duty availability (AGENT only).
+   * @param {boolean} isAvailable
+   * @returns {Promise<{ id: string, isAvailable: boolean }>}
+   */
+  updateMyAvailability(isAvailable) {
+    return apiClient.patch('/auth/me/availability', { isAvailable });
   },
 };

@@ -35,6 +35,15 @@ export function AuthProvider({ children }) {
     localStorage.setItem(USER_KEY, JSON.stringify(newUser));
   }, []);
 
+  const updateUser = useCallback((updatedFields) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updatedFields };
+      localStorage.setItem(USER_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const refreshUser = useCallback(async () => {
     if (!token) return null;
     try {
@@ -97,6 +106,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     refreshUser,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

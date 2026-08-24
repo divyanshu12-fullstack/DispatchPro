@@ -204,50 +204,39 @@ export function QuoteFormFields({
         <label className="block label-caps text-ink-variant">Payment Mode at Delivery</label>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Prepaid / Standard Option */}
+          {/* Prepaid / Razorpay Option (Disabled & Unselectable) */}
           <div
-            onClick={() => !disabled && onChange('isCOD', false)}
-            className={`p-3.5 rounded-lg hairline cursor-pointer transition-all flex items-start gap-3 ${
-              !isCOD
-                ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
-                : 'bg-container-low hover:bg-container'
-            }`}
+            className="p-3.5 rounded-lg hairline bg-container-low/50 opacity-75 cursor-not-allowed flex items-start gap-3 select-none relative"
+            title="Prepaid Razorpay integration is coming soon"
           >
-            <div
-              className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
-                !isCOD ? 'border-primary bg-primary text-on-primary' : 'border-outline bg-container-lowest'
-              }`}
-            >
-              {!isCOD && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-            </div>
-            <div>
-              <div className="font-semibold text-xs text-ink">Prepaid / Non-COD</div>
-              <div className="text-[11px] text-ink-variant mt-0.5">No doorstep cash collection</div>
+            <div className="w-4 h-4 rounded-full border border-outline bg-container-high flex items-center justify-center mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-xs text-ink-variant">Prepaid / Non-COD</span>
+                <span className="px-2 py-0.5 rounded bg-container-high text-ink-variant text-[9px] font-bold shrink-0">
+                  Razorpay Integration Coming Soon
+                </span>
+              </div>
+              <div className="text-[11px] text-ink-variant/70 mt-0.5">Online gateway (Coming Soon)</div>
             </div>
           </div>
 
-          {/* COD Option */}
+          {/* COD Option (Active & Selected) */}
           <div
             onClick={() => !disabled && onChange('isCOD', true)}
-            className={`p-3.5 rounded-lg hairline cursor-pointer transition-all flex items-start gap-3 ${
-              isCOD
-                ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
-                : 'bg-container-low hover:bg-container'
-            }`}
+            className="p-3.5 rounded-lg hairline bg-container-lowest border-primary ring-1 ring-primary shadow-xs cursor-pointer transition-all flex items-start gap-3"
           >
-            <div
-              className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
-                isCOD ? 'border-primary bg-primary text-on-primary' : 'border-outline bg-container-lowest'
-              }`}
-            >
-              {isCOD && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+            <div className="w-4 h-4 rounded-full border border-primary bg-primary text-on-primary flex items-center justify-center mt-0.5 shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-white" />
             </div>
-            <div>
-              <div className="font-semibold text-xs text-ink flex items-center gap-1.5">
-                <span>Cash on Delivery (COD)</span>
-                <span className="px-1.5 py-0.2 rounded bg-accent/20 text-[#735c00] text-[9px] font-bold">
-                  Active
-                </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-semibold text-xs text-ink flex items-center gap-1.5">
+                  <span>Cash on Delivery (COD)</span>
+                  <span className="px-1.5 py-0.2 rounded bg-accent/20 text-[#735c00] text-[9px] font-bold">
+                    Active
+                  </span>
+                </div>
               </div>
               <div className="text-[11px] text-ink-variant mt-0.5">Collect cash at doorstep</div>
             </div>

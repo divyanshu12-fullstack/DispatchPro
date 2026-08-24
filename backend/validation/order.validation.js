@@ -83,6 +83,15 @@ export function validateQuote(body) {
     errors.actualWeightKg = 'actualWeightKg is required and must be > 0';
   }
 
+  if (
+    !body?.dimensions ||
+    typeof body.dimensions !== 'object' ||
+    body.dimensions.lengthCm == null ||
+    body.dimensions.breadthCm == null ||
+    body.dimensions.heightCm == null
+  ) {
+    errors.dimensions = 'dimensions is required as { lengthCm, breadthCm, heightCm }';
+  }
   const dim = validateDimensions(body?.dimensions);
   Object.assign(errors, dim.errors);
 
@@ -109,9 +118,8 @@ export function validateQuote(body) {
 }
 
 export function validateCreateOrder(body) {
-  // Same shape as quote, plus pickupAddress, dropAddress, customerEmail,
-  // scheduledDeliveryDate. Customer id is derived from req.user when the
-  // caller is a CUSTOMER, or from body.customer when ADMIN places on behalf.
+  // Pure schema check. Customer email is defaulted from req.user in the
+  // controller before this is called, so the validator never inspects auth.
   const errors = {};
   const orderType = asString(body?.orderType);
   const pickupPincode = asString(body?.pickupPincode);
@@ -149,6 +157,15 @@ export function validateCreateOrder(body) {
     errors.actualWeightKg = 'actualWeightKg is required and must be > 0';
   }
 
+  if (
+    !body?.dimensions ||
+    typeof body.dimensions !== 'object' ||
+    body.dimensions.lengthCm == null ||
+    body.dimensions.breadthCm == null ||
+    body.dimensions.heightCm == null
+  ) {
+    errors.dimensions = 'dimensions is required as { lengthCm, breadthCm, heightCm }';
+  }
   const dim = validateDimensions(body?.dimensions);
   Object.assign(errors, dim.errors);
 

@@ -60,6 +60,9 @@ export const orderController = {
   },
 
   async create(req, res) {
+    if (!req.body.customerEmail && req.user?.email) {
+      req.body.customerEmail = req.user.email;
+    }
     const input = validateCreateOrder(req.body);
     const order = await createOrder({ caller: req.user, input });
     res.status(201).json({
