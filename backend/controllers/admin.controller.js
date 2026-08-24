@@ -1,4 +1,4 @@
-import { createAgent, updateAgent, listAgents } from '../services/agent.service.js';
+import { createAgent, updateAgent, listAgents, listZones } from '../services/agent.service.js';
 import { validateCreateAgent, validateUpdateAgent } from '../validation/agent.validation.js';
 import { validateObjectId } from '../validation/dispatch.validation.js';
 
@@ -54,6 +54,19 @@ export const adminController = {
         total: agents.length,
       },
       message: 'Agents listed',
+    });
+  },
+
+  async listZones(_req, res) {
+    const zones = await listZones();
+    res.json({
+      success: true,
+      data: zones.map((z) => ({
+        id: z._id,
+        name: z.name,
+        code: z.code,
+      })),
+      message: 'Zones listed',
     });
   },
 };

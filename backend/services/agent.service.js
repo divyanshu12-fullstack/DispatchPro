@@ -89,3 +89,11 @@ export async function listAgents({ query = {} }) {
     .sort({ fullName: 1 })
     .lean();
 }
+
+/**
+ * List active zones for admin selection dropdowns.
+ */
+export async function listZones() {
+  return Zone.find({ isActive: true }).sort({ name: 1 }).lean();
+}
+

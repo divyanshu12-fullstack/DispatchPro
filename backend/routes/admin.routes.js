@@ -13,5 +13,6 @@ router.use(requireRole('ADMIN'));
 router.post('/agents', asyncHandler(adminController.createAgent));
 router.get('/agents', asyncHandler(adminController.listAgents));
 router.patch('/agents/:id', asyncHandler(adminController.updateAgent));
+router.get('/zones', asyncHandler(adminController.listZones));
 
 export default router;

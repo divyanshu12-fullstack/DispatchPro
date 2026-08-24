@@ -1,1 +1,5 @@
 [db] Disconnected from MongoDB
+[error] POST /api/orders/quote -> 422: Validation failed
+[error] POST /api/orders/quote -> 422: Validation failed
+[error] POST /api/orders/quote -> 422: Validation failed
+[error] POST /api/orders/quote -> 422: Validation failed
