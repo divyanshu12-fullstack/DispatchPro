@@ -5,7 +5,7 @@ import { Textarea } from '../../components/ui/Textarea.jsx';
 import { Input } from '../../components/ui/Input.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { ordersApi } from '../../api/orders.api.js';
-import { ORDER_STATUS, FAILURE_REASONS } from '../../lib/constants.js';
+import { ORDER_STATUS, FAILURE_REASONS, RESCHEDULABLE_REASONS } from '../../lib/constants.js';
 import { getErrorMessage } from '../../lib/errors.js';
 import { AlertTriangle } from 'lucide-react';
 
@@ -26,7 +26,9 @@ export function ReportFailureModal({
   orderNumber,
   onSuccess,
 }) {
-  const [selectedReason, setSelectedReason] = useState('CUSTOMER_UNAVAILABLE');
+  // Backend validates against display strings ('Customer Unavailable', etc.),
+  // not enum keys — see models/constants/StatusTransitions.js.
+  const [selectedReason, setSelectedReason] = useState(FAILURE_REASONS[0]);
   const [note, setNote] = useState('');
   const [location, setLocation] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,11 +87,11 @@ export function ReportFailureModal({
             Primary Failure Reason
           </label>
           <div className="space-y-2">
-            {FAILURE_REASONS.map((r) => (
+            {FAILURE_REASONS.map((reason) => (
               <label
-                key={r.value}
+                key={reason}
                 className={`flex items-center gap-3 p-3 rounded-lg hairline cursor-pointer transition-colors text-xs ${
-                  selectedReason === r.value
+                  selectedReason === reason
                     ? 'bg-container-lowest border-primary ring-1 ring-primary font-semibold text-ink shadow-xs'
                     : 'bg-container-low hover:bg-container text-ink-variant'
                 }`}
@@ -97,15 +99,21 @@ export function ReportFailureModal({
                 <input
                   type="radio"
                   name="failureReason"
-                  value={r.value}
-                  checked={selectedReason === r.value}
+                  value={reason}
+                  checked={selectedReason === reason}
                   onChange={(e) => setSelectedReason(e.target.value)}
                   className="w-4 h-4 text-primary accent-primary"
                 />
-                <span>{r.label}</span>
+                <span>{reason}</span>
               </label>
             ))}
           </div>
+
+          {!RESCHEDULABLE_REASONS.includes(selectedReason) && (
+            <p className="text-[11px] text-ink-variant leading-relaxed">
+              Note: only "Customer Unavailable" lets the customer reschedule. Any other reason sends the parcel back to origin (RTO).
+            </p>
+          )}
         </div>
 
         {/* Optional Notes */}
