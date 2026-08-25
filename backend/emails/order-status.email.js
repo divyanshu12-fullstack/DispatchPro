@@ -1,56 +1,74 @@
-import { emailLayout, escapeHtml, formatDate, deliveryStepper } from './email-layout.js';
+import { FRONTEND_URL } from '../config/env.js';
+import {
+  emailLayout,
+  escapeHtml,
+  formatDate,
+  formatDateTime,
+  deliveryStepper,
+  detailRows,
+  ctaButton,
+} from './email-layout.js';
 
 const STATUS_META = {
-  CREATED:          { label: 'Order placed',        tone: 'info' },
-  ASSIGNED:         { label: 'Agent assigned',      tone: 'info' },
-  PICKED_UP:        { label: 'Picked up',           tone: 'info' },
-  IN_TRANSIT:       { label: 'In transit',          tone: 'info' },
-  OUT_FOR_DELIVERY: { label: 'Out for delivery',    tone: 'warning' },
-  DELIVERED:        { label: 'Delivered',           tone: 'success' },
-  FAILED:           { label: 'Delivery failed',     tone: 'danger' },
-  RESCHEDULED:      { label: 'Rescheduled',         tone: 'info' },
-  RETURN_TO_ORIGIN: { label: 'Returning to origin', tone: 'danger' },
+  CREATED:          { label: 'Order Placed',        tone: 'neutral', headline: 'Order confirmed & placed' },
+  ASSIGNED:         { label: 'Agent Assigned',      tone: 'info',    headline: 'Delivery agent assigned' },
+  PICKED_UP:        { label: 'Package Picked Up',   tone: 'info',    headline: 'Package in courier possession' },
+  IN_TRANSIT:       { label: 'In Transit',          tone: 'info',    headline: 'Shipment is on the move' },
+  OUT_FOR_DELIVERY: { label: 'Out for Delivery',    tone: 'gold',    headline: 'Your package is arriving today' },
+  DELIVERED:        { label: 'Delivered',           tone: 'success', headline: 'Package delivered successfully' },
+  FAILED:           { label: 'Delivery Failed',     tone: 'danger',  headline: 'Delivery attempt unsuccessful' },
+  RESCHEDULED:      { label: 'Rescheduled',         tone: 'neutral', headline: 'Delivery window updated' },
+  RETURN_TO_ORIGIN: { label: 'Returning to Origin', tone: 'danger',  headline: 'Shipment returning to origin' },
 };
 
-// Statuses that follow the normal delivery progression get the stepper.
 const STEPPER_STATUSES = new Set([
   'CREATED', 'ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED',
 ]);
 
 export function orderStatusEmail({ timeline }) {
-  const meta = STATUS_META[timeline.toStatus] ?? { label: timeline.toStatus, tone: 'info' };
+  const meta = STATUS_META[timeline.toStatus] ?? {
+    label: timeline.toStatus,
+    tone: 'neutral',
+    headline: `Update on order ${timeline.orderNumber}`,
+  };
   const fromMeta = STATUS_META[timeline.fromStatus];
+  const trackingUrl = `${FRONTEND_URL}/app`;
+
+  const statusColorMap = {
+    DELIVERED: '#15803d',
+    FAILED: '#ba1a1a',
+    OUT_FOR_DELIVERY: '#735c00',
+    RETURN_TO_ORIGIN: '#ba1a1a',
+  };
+  const statusColor = statusColorMap[timeline.toStatus] || '#121212';
 
   const rows = [
-    ['Order number', escapeHtml(timeline.orderNumber)],
-    ['Status', `<span style="color:${timeline.toStatus === 'DELIVERED' ? '#0e9f5d' : '#165dff'}">${escapeHtml(meta.label)}</span>`],
-    ...(fromMeta ? [['Previous status', escapeHtml(fromMeta.label)]] : []),
-    ...(timeline.scheduledDeliveryDate ? [['Scheduled delivery', escapeHtml(formatDate(timeline.scheduledDeliveryDate))]] : []),
-    ['Last update', escapeHtml(formatDate(timeline.changedAt))],
+    ['Order Number', escapeHtml(timeline.orderNumber)],
+    ['Status', `<span style="color: ${statusColor}; font-weight: 700;">${escapeHtml(meta.label)}</span>`],
+    ...(fromMeta ? [['Previous Status', escapeHtml(fromMeta.label)]] : []),
+    ...(timeline.scheduledDeliveryDate
+      ? [['Scheduled Delivery', escapeHtml(formatDate(timeline.scheduledDeliveryDate))]]
+      : []),
+    ['Last Updated', escapeHtml(formatDateTime(timeline.changedAt))],
   ];
 
   return {
     subject: `${timeline.orderNumber} · ${meta.label}`,
     html: emailLayout({
-      preheader: `Order ${timeline.orderNumber} is now ${meta.label.toLowerCase()}.`,
-      banner: meta.label,
-      bannerTone: meta.tone,
-      title: meta.tone === 'success'
-        ? 'Your package has been delivered'
-        : `Update on order <em style="color:#5b6b83;font-style:normal">${escapeHtml(timeline.orderNumber)}</em>`,
-      intro: meta.tone === 'success'
-        ? `Great news — order <strong>${escapeHtml(timeline.orderNumber)}</strong> was delivered successfully. Thank you for shipping with DispatchPro.`
-        : `Your order <strong>${escapeHtml(timeline.orderNumber)}</strong> has moved forward. Here is where things stand right now.`,
+      preheader: `Status update for order ${timeline.orderNumber}: ${meta.label}.`,
+      chipLabel: meta.label,
+      chipTone: meta.tone,
+      title: meta.headline,
+      intro:
+        timeline.toStatus === 'DELIVERED'
+          ? `Order <strong style="color: #121212;">${escapeHtml(timeline.orderNumber)}</strong> has been delivered successfully. Thank you for choosing DispatchPro.`
+          : `Shipment <strong style="color: #121212;">${escapeHtml(timeline.orderNumber)}</strong> has reached a new operational milestone. See current progress below.`,
       content: `
         ${STEPPER_STATUSES.has(timeline.toStatus) ? deliveryStepper(timeline.toStatus) : ''}
-        <div style="background:#f8fafc;border:1px solid #e4e7ec;border-radius:12px;padding:6px 22px;margin-top:18px">
-          ${rows.map(([label, value]) => `
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
-              <td style="padding:11px 0;border-bottom:1px solid #e4e7ec;color:#5b6b83;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;width:44%;vertical-align:top">${label}</td>
-              <td style="padding:11px 0;border-bottom:1px solid #e4e7ec;color:#0f1c33;font-size:14px;font-weight:600;text-align:right;vertical-align:top">${value}</td>
-            </tr></table>`).join('')}
-        </div>`,
+        ${detailRows(rows)}
+        ${ctaButton(trackingUrl, 'Track Order in Dashboard')}`,
       footerEmail: timeline.customerEmail,
     }),
   };
 }
+
