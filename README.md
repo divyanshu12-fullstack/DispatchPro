@@ -20,8 +20,15 @@ You can access the various portals using these pre-seeded users, Just type in th
 | Role | Email | Password |
 |---|---|---|
 | **Admin** | `divyanshudwivedi1290@gmail.com` | `Divyanshu@123` |
-| **User (Customer)** | `dwivedinysa@gmail.com` | `NysaDwivedi@123` |
-| **Agent (Courier)** | `test@gmail.com` | `Test@12345` | 
+| **User (Customer)** | `<<Your Gmail>>` | `<<Your Pass>>` |
+| **Agent (Courier)** | `test@gmail.com` | `Test@12345` |
+
+### ⭐⭐Account Provisioning⭐⭐
+
+- New accounts created through the registration page are assigned the **Customer** role. Registration cannot be used to create an administrator account.
+- To create an **Admin** account, configure the required credentials in `backend/.env` and run `npm run seed` from the `backend` directory.
+- **Agents (Couriers)** can be created only by an administrator through the Admin portal. When creating an agent, the administrator specifies the agent's credentials,  service zone and maximum delivery capacity.
+- After an Admin or Agent account is created through database seeding or the Admin portal, sign in through the `/login` endpoint using the configured credentials to access the corresponding portal.
 
 ---
 
