@@ -24,7 +24,6 @@ import {
   Navigation,
   Truck,
   RotateCcw,
-  Compass,
   Copy,
   Check,
 } from 'lucide-react';
@@ -57,11 +56,6 @@ export function AgentOrderDetailPage() {
     setIsCopied(true);
     toast.success('Waybill tracking number copied to clipboard');
     setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  const openGoogleMaps = (address, pincode) => {
-    const query = encodeURIComponent(`${address || ''} ${pincode || ''}`.trim());
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
   };
 
   const handleStatusTransition = async (nextStatus) => {
@@ -179,21 +173,13 @@ export function AgentOrderDetailPage() {
           </div>
         )}
 
-        {/* Route Map & Quick Maps Directions */}
+        {/* Route & Addresses */}
         <div className="bg-container-lowest hairline rounded-2xl p-4 sm:p-5 shadow-card space-y-4">
           <div className="flex items-center justify-between border-b border-hairline pb-3">
             <div className="label-caps text-xs text-ink font-bold flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-primary" />
               <span>Route & Addresses</span>
             </div>
-
-            <button
-              onClick={() => openGoogleMaps(order.drop?.address, order.drop?.pincode)}
-              className="px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer hover:bg-primary-hover transition-colors"
-            >
-              <Compass className="w-3.5 h-3.5" />
-              <span>Open in Google Maps</span>
-            </button>
           </div>
 
           <PincodePair

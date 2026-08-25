@@ -25,7 +25,6 @@ import {
   PackageCheck,
   Navigation,
   CheckCircle2,
-  Compass,
   Power,
 } from 'lucide-react';
 
@@ -113,12 +112,6 @@ export function AgentDashboardPage() {
     } finally {
       setIsTogglingDuty(false);
     }
-  };
-
-  const openGoogleMaps = (e, address, pincode) => {
-    e.stopPropagation();
-    const query = encodeURIComponent(`${address || ''} ${pincode || ''}`.trim());
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
   };
 
   return (
@@ -301,7 +294,7 @@ export function AgentDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Destination Address Card with Quick Maps Button */}
+                  {/* Destination Address Card */}
                   <div className="p-3 bg-container-low/80 rounded-xl hairline text-xs space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 flex-1">
@@ -315,16 +308,6 @@ export function AgentDashboardPage() {
                           </p>
                         </div>
                       </div>
-
-                      {/* Google Maps Quick Direction Button */}
-                      <button
-                        onClick={(e) => openGoogleMaps(e, order.drop?.address, order.drop?.pincode)}
-                        className="px-2.5 py-1.5 rounded-lg bg-container-lowest hover:bg-container hairline text-primary text-[11px] font-semibold flex items-center gap-1 shrink-0 cursor-pointer shadow-xs transition-colors"
-                        title="Open in Google Maps"
-                      >
-                        <Compass className="w-3.5 h-3.5" />
-                        <span>Maps</span>
-                      </button>
                     </div>
 
                     {isCOD && order.currentStatus === ORDER_STATUS.OUT_FOR_DELIVERY && (
