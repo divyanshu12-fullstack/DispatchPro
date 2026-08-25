@@ -15,13 +15,13 @@
 
 ### 🔑 Demo & Test User Accounts
 
-You can access the various portals using these pre-seeded users:
+You can access the various portals using these pre-seeded users, Just type in these credentials at login to view them:
 
-| Role | Email | Password | Portal |
-|---|---|---|---|
-| **Admin** | `divyanshudwivedi1290@gmail.com` | `Divyanshu@123` | Admin Operations Dashboard (`/admin`) |
-| **User (Customer)** | `dwivedinysa@gmail.com` | `NysaDwivedi@123` | Customer Portal (`/app`) |
-| **Agent (Courier)** | `test@gmail.com` | `Test@12345` | Field Courier Mobile Console (`/agent`) |
+| Role | Email | Password |
+|---|---|---|
+| **Admin** | `divyanshudwivedi1290@gmail.com` | `Divyanshu@123` |
+| **User (Customer)** | `dwivedinysa@gmail.com` | `NysaDwivedi@123` |
+| **Agent (Courier)** | `test@gmail.com` | `Test@12345` | 
 
 ---
 
