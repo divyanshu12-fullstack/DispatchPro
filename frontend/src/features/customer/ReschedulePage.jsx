@@ -6,13 +6,15 @@ import { Button } from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { getErrorMessage } from '../../lib/errors.js';
-import { Calendar, RotateCcw, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Calendar, RotateCcw, ArrowLeft, AlertTriangle, AlertCircle } from 'lucide-react';
 
 function getTomorrowDateString() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   return d.toISOString().split('T')[0];
 }
+
+const MAX_FAILED_ATTEMPTS = 2;
 
 export function ReschedulePage() {
   const [searchParams] = useSearchParams();
@@ -23,34 +25,45 @@ export function ReschedulePage() {
   const [orderQuery, setOrderQuery] = useState(orderNumberParam);
   const [newDeliveryDate, setNewDeliveryDate] = useState(getTomorrowDateString);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   const tomorrowStr = getTomorrowDateString();
 
-  // Find order by search if provided
-  const { data: searchResults, isLoading: isSearchLoading } = useQuery({
-    queryKey: ['find_failed_order', orderQuery],
-    queryFn: () => ordersApi.listOrders({ status: 'FAILED', limit: 20 }),
-    enabled: Boolean(orderQuery),
+  // Server-side lookup by orderNumber
+  const { data: orderData, isLoading: isLookupLoading } = useQuery({
+    queryKey: ['find_failed_order_by_number', orderQuery],
+    queryFn: () => ordersApi.lookupByOrderNumber(orderQuery.trim()),
+    enabled: Boolean(orderQuery.trim()),
+    retry: false,
   });
 
-  const matchingOrder = (searchResults?.items || []).find(
-    (o) =>
-      o.orderNumber?.toLowerCase() === orderQuery.trim().toLowerCase() ||
-      o.id === orderQuery.trim()
-  );
+  // Derive matching order and lookup error directly from query state.
+  const matchingOrder = orderData?.data || null;
+  const lookupMessage = !isLookupLoading && !matchingOrder && orderQuery.trim()
+    ? `No failed delivery matching "${orderQuery}" was found under your account.`
+    : '';
+
+  const isReschedulable = matchingOrder?.currentStatus === 'FAILED' &&
+    (matchingOrder?.failedAttemptCount ?? 0) < MAX_FAILED_ATTEMPTS;
+
+  const attemptsRemaining = MAX_FAILED_ATTEMPTS - (matchingOrder?.failedAttemptCount ?? 0);
 
   const handleReschedule = async (e) => {
     e?.preventDefault();
-    setError('');
+    setSubmitError('');
 
     if (!matchingOrder) {
-      setError('Please select or specify a valid failed order number.');
+      setSubmitError('Please select or specify a valid failed order number.');
+      return;
+    }
+
+    if (!isReschedulable) {
+      setSubmitError('This order has exceeded the maximum reschedule attempts and is marked for Return to Origin.');
       return;
     }
 
     if (!newDeliveryDate) {
-      setError('Please choose a valid future delivery date.');
+      setSubmitError('Please choose a valid future delivery date.');
       return;
     }
 
@@ -65,7 +78,7 @@ export function ReschedulePage() {
       navigate(`/app/orders/${matchingOrder.id}`);
     } catch (err) {
       const msg = getErrorMessage(err, 'Failed to reschedule order.');
-      setError(msg);
+      setSubmitError(msg);
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -100,7 +113,10 @@ export function ReschedulePage() {
               label="Waybill Tracking Number"
               placeholder="e.g. LM-2026-000001"
               value={orderQuery}
-              onChange={(e) => setOrderQuery(e.target.value)}
+              onChange={(e) => {
+                setOrderQuery(e.target.value);
+                setSubmitError('');
+              }}
               helperText="Enter the tracking ID of your failed shipment"
               required
             />
@@ -118,11 +134,28 @@ export function ReschedulePage() {
                 <div className="text-[11px] text-ink-variant/70">
                   Route: {matchingOrder.pickup?.pincode} → {matchingOrder.drop?.pincode}
                 </div>
+
+                {/* Attempt counter & RTO warning */}
+                {!isReschedulable ? (
+                  <div className="mt-2 p-3 bg-danger-soft/60 hairline border-danger/30 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-danger" />
+                    <div className="text-xs text-danger">
+                      <strong>Return to Origin initiated:</strong> This order has reached the maximum of {MAX_FAILED_ATTEMPTS} failed attempts and can no longer be rescheduled.
+                    </div>
+                  </div>
+                ) : matchingOrder.failedAttemptCount > 0 ? (
+                  <div className="mt-2 p-3 bg-warning-soft/60 hairline border-warning/30 rounded-lg flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-warning" />
+                    <div className="text-xs text-warning">
+                      <strong>Attempt {matchingOrder.failedAttemptCount} of {MAX_FAILED_ATTEMPTS} used</strong> — {attemptsRemaining} reschedule attempt{attemptsRemaining !== 1 ? 's' : ''} remaining.
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ) : orderQuery && !isSearchLoading ? (
+            ) : orderQuery && !isLookupLoading ? (
               <div className="p-3.5 bg-danger-soft/60 hairline border-danger/30 rounded-lg text-xs text-danger flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
-                <span>No failed delivery matching "{orderQuery}" was found under your account.</span>
+                <span>{lookupMessage || `No failed delivery matching "${orderQuery}" was found under your account.`}</span>
               </div>
             ) : null}
 
@@ -138,9 +171,10 @@ export function ReschedulePage() {
                 min={tomorrowStr}
                 value={newDeliveryDate}
                 onChange={(e) => setNewDeliveryDate(e.target.value)}
-                error={error}
+                error={submitError}
                 helperText="Deliveries must be scheduled for tomorrow or a future date"
                 required
+                disabled={!isReschedulable}
               />
             </div>
 
@@ -156,7 +190,7 @@ export function ReschedulePage() {
                 variant="primary"
                 size="md"
                 isLoading={isSubmitting}
-                disabled={!matchingOrder}
+                disabled={!matchingOrder || !isReschedulable}
                 leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
               >
                 Confirm Reschedule

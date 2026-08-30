@@ -131,6 +131,40 @@ export async function getOrderForUser({ caller, orderId }) {
   throw ApiError.forbidden('You do not have access to this order');
 }
 
+/**
+ * Lookup order by orderNumber with same role-based visibility as getOrderForUser.
+ */
+export async function getOrderByOrderNumber({ caller, orderNumber }) {
+  let order;
+  try {
+    order = await Order.findOne({ orderNumber });
+  } catch (e) {
+    throw ApiError.badRequest('Invalid order number');
+  }
+  if (!order) throw ApiError.notFound('Order not found');
+
+  // ADMIN sees everything.
+  if (caller.role === 'ADMIN') return order;
+
+  // CUSTOMER sees only their own orders.
+  if (caller.role === 'CUSTOMER') {
+    if (order.customer.toString() !== caller.id) {
+      throw ApiError.forbidden('You do not have access to this order');
+    }
+    return order;
+  }
+
+  // AGENT sees only orders assigned to them.
+  if (caller.role === 'AGENT') {
+    if (!order.assignedAgent || order.assignedAgent.toString() !== caller.id) {
+      throw ApiError.forbidden('You do not have access to this order');
+    }
+    return order;
+  }
+
+  throw ApiError.forbidden('You do not have access to this order');
+}
+
 const MAX_PAGE_LIMIT = 100;
 
 /**

@@ -5,13 +5,15 @@ import { Input } from '../../components/ui/Input.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { ordersApi } from '../../api/orders.api.js';
 import { getErrorMessage } from '../../lib/errors.js';
-import { Calendar, RotateCcw } from 'lucide-react';
+import { Calendar, RotateCcw, AlertTriangle, AlertCircle } from 'lucide-react';
 
 function getTomorrowDateString() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   return d.toISOString().split('T')[0];
 }
+
+const MAX_FAILED_ATTEMPTS = 2;
 
 /**
  * Modal to reschedule a failed delivery attempt.
@@ -21,6 +23,7 @@ function getTomorrowDateString() {
  * @param {() => void} props.onClose
  * @param {string} props.orderId
  * @param {string} props.orderNumber
+ * @param {number} [props.failedAttemptCount=0]
  * @param {() => void} [props.onSuccess]
  */
 export function RescheduleModal({
@@ -28,6 +31,7 @@ export function RescheduleModal({
   onClose,
   orderId,
   orderNumber,
+  failedAttemptCount = 0,
   onSuccess,
 }) {
   const [newDeliveryDate, setNewDeliveryDate] = useState(getTomorrowDateString);
@@ -37,9 +41,17 @@ export function RescheduleModal({
   const toast = useToast();
   const tomorrowStr = getTomorrowDateString();
 
+  const isReschedulable = failedAttemptCount < MAX_FAILED_ATTEMPTS;
+  const attemptsRemaining = MAX_FAILED_ATTEMPTS - failedAttemptCount;
+
   const handleReschedule = async (e) => {
     e?.preventDefault();
     setError('');
+
+    if (!isReschedulable) {
+      setError('This order has exceeded the maximum reschedule attempts and is marked for Return to Origin.');
+      return;
+    }
 
     if (!newDeliveryDate) {
       setError('Please select a valid future delivery date.');
@@ -78,6 +90,23 @@ export function RescheduleModal({
           <p className="text-xs text-ink-variant leading-relaxed">
             Select a new delivery date for waybill <strong className="text-ink font-mono">{orderNumber}</strong>. The shipment will be re-queued in the dispatch engine and assigned for delivery.
           </p>
+
+          {/* Attempt counter & RTO warning */}
+          {!isReschedulable ? (
+            <div className="p-3 bg-danger-soft/60 hairline border-danger/30 rounded-lg flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-danger" />
+              <div className="text-xs text-danger">
+                <strong>Return to Origin initiated:</strong> This order has reached the maximum of {MAX_FAILED_ATTEMPTS} failed attempts and can no longer be rescheduled.
+              </div>
+            </div>
+          ) : failedAttemptCount > 0 ? (
+            <div className="p-3 bg-warning-soft/60 hairline border-warning/30 rounded-lg flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-warning" />
+              <div className="text-xs text-warning">
+                <strong>Attempt {failedAttemptCount} of {MAX_FAILED_ATTEMPTS} used</strong> — {attemptsRemaining} reschedule attempt{attemptsRemaining !== 1 ? 's' : ''} remaining.
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="p-4 bg-container-low hairline rounded-lg space-y-3">
@@ -97,6 +126,7 @@ export function RescheduleModal({
             error={error}
             helperText="Delivery can be scheduled for tomorrow onwards"
             required
+            disabled={!isReschedulable}
           />
         </div>
 
@@ -116,6 +146,7 @@ export function RescheduleModal({
             variant="primary"
             size="md"
             isLoading={isSubmitting}
+            disabled={!isReschedulable}
             leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
           >
             Confirm Reschedule

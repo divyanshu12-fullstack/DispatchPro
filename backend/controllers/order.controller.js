@@ -1,4 +1,4 @@
-import { createOrder, getOrderForUser, listOrdersForUser, getTimelineForUser } from '../services/order.service.js';
+import { createOrder, getOrderForUser, listOrdersForUser, getTimelineForUser, getOrderByOrderNumber } from '../services/order.service.js';
 import { dispatchOrder } from '../services/dispatch.service.js';
 import { transitionOrder } from '../services/lifecycle.service.js';
 import { rescheduleOrder } from '../services/reschedule.service.js';
@@ -37,6 +37,8 @@ function shapeOrder(o) {
     currentStatus: o.currentStatus,
     scheduledDeliveryDate: o.scheduledDeliveryDate,
     lastFailureReason: o.lastFailureReason,
+    failedAttemptCount: o.failedAttemptCount,
+    needsManualAttention: o.needsManualAttention,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
   };
@@ -92,6 +94,18 @@ export const orderController = {
         pagination: { total, page, limit, pages },
       },
     });
+  },
+
+  async lookupByOrderNumber(req, res) {
+    const { orderNumber } = req.query;
+    if (!orderNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'orderNumber query parameter is required',
+      });
+    }
+    const order = await getOrderByOrderNumber({ caller: req.user, orderNumber });
+    res.json({ success: true, data: shapeOrder(order) });
   },
 
   async timeline(req, res) {

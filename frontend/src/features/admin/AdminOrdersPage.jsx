@@ -11,6 +11,7 @@ import { useToast } from '../../components/ui/Toast.jsx';
 import { formatCurrency, formatDate, formatDateTime } from '../../lib/format.js';
 import { ORDER_STATUS } from '../../lib/constants.js';
 import { getErrorMessage } from '../../lib/errors.js';
+import { RescheduleModal } from '../customer/RescheduleModal.jsx';
 import {
   Layers,
   Search,
@@ -19,6 +20,9 @@ import {
   ChevronRight,
   Play,
   RefreshCw,
+  RotateCcw,
+  AlertCircle,
+  Filter,
 } from 'lucide-react';
 
 const STATUS_FILTERS = [
@@ -33,14 +37,26 @@ const STATUS_FILTERS = [
   { label: 'RTO', value: ORDER_STATUS.RETURN_TO_ORIGIN },
 ];
 
+const MAX_FAILED_ATTEMPTS = 2;
+
+const EXCEPTION_FILTERS = [
+  { label: 'All Failed', value: 'ALL_FAILED' },
+  { label: 'Reschedulable', value: 'RESCHEDULABLE' },
+  { label: 'RTO-bound', value: 'RTO_BOUND' },
+  { label: 'Needs Attention', value: 'NEEDS_ATTENTION' },
+];
+
 export function AdminOrdersPage() {
   const navigate = useNavigate();
   const toast = useToast();
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [exceptionFilter, setExceptionFilter] = useState(null);
   const [searchInput, setSearchInput] = useState('');
   const [dispatchingId, setDispatchingId] = useState(null);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleOrder, setRescheduleOrder] = useState(null);
 
   const {
     data,
@@ -48,7 +64,7 @@ export function AdminOrdersPage() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['admin_all_orders', { page, status: statusFilter }],
+    queryKey: ['admin_all_orders', { page, status: statusFilter, exception: exceptionFilter }],
     queryFn: () => {
       const params = { page, limit: 15 };
       if (statusFilter !== 'ALL') params.status = statusFilter;
@@ -69,6 +85,25 @@ export function AdminOrdersPage() {
     return num.includes(q) || pPin.includes(q) || dPin.includes(q);
   });
 
+  // Exception filter for FAILED orders
+  const exceptionFilteredOrders = exceptionFilter
+    ? filteredOrders.filter((o) => {
+        const attempts = o.failedAttemptCount ?? 0;
+        const needsAttention = o.needsManualAttention;
+        switch (exceptionFilter) {
+          case 'RESCHEDULABLE':
+            return o.currentStatus === ORDER_STATUS.FAILED && attempts < MAX_FAILED_ATTEMPTS;
+          case 'RTO_BOUND':
+            return o.currentStatus === ORDER_STATUS.FAILED && attempts >= MAX_FAILED_ATTEMPTS;
+          case 'NEEDS_ATTENTION':
+            return needsAttention === true;
+          case 'ALL_FAILED':
+          default:
+            return o.currentStatus === ORDER_STATUS.FAILED;
+        }
+      })
+    : filteredOrders;
+
   const handleForceDispatch = async (e, order) => {
     e.stopPropagation();
     setDispatchingId(order.id);
@@ -81,6 +116,12 @@ export function AdminOrdersPage() {
     } finally {
       setDispatchingId(null);
     }
+  };
+
+  const handleReschedule = (e, order) => {
+    e.stopPropagation();
+    setRescheduleOrder(order);
+    setRescheduleOpen(true);
   };
 
   return (
@@ -131,6 +172,9 @@ export function AdminOrdersPage() {
                 key={f.value}
                 onClick={() => {
                   setStatusFilter(f.value);
+                  if (f.value !== ORDER_STATUS.FAILED) {
+                    setExceptionFilter(null);
+                  }
                   setPage(1);
                 }}
                 className={`px-3 py-1 text-xs rounded font-medium transition-colors shrink-0 cursor-pointer ${
@@ -143,6 +187,31 @@ export function AdminOrdersPage() {
               </button>
             ))}
           </div>
+
+          {/* Exception Filter Chips (only when Failed filter is active) */}
+          {statusFilter === ORDER_STATUS.FAILED && (
+            <div className="flex items-center gap-2 pt-1 border-t border-hairline">
+              <div className="flex items-center gap-1.5 text-ink-variant shrink-0">
+                <Filter className="w-3.5 h-3.5" />
+                <span className="label-caps text-[10px]">Exceptions</span>
+              </div>
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                {EXCEPTION_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    onClick={() => setExceptionFilter(exceptionFilter === f.value ? null : f.value)}
+                    className={`px-2.5 py-0.5 text-[11px] rounded font-medium transition-colors shrink-0 cursor-pointer ${
+                      exceptionFilter === f.value
+                        ? 'bg-warning text-on-primary font-semibold'
+                        : 'bg-container-low text-ink-variant hover:text-ink hover:bg-container'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Orders Table */}
@@ -158,19 +227,22 @@ export function AdminOrdersPage() {
                 Retry
               </Button>
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : exceptionFilteredOrders.length === 0 ? (
             <div className="py-12 px-6">
               <EmptyState
                 title="No shipments found"
                 description={
                   searchInput
                     ? 'No orders match your filter criteria.'
+                    : exceptionFilter
+                    ? 'No orders match this exception filter.'
                     : 'No orders recorded in this status view.'
                 }
                 actionLabel="Clear Filters"
                 onAction={() => {
                   setSearchInput('');
                   setStatusFilter('ALL');
+                  setExceptionFilter(null);
                 }}
                 icon={<Layers className="w-6 h-6" />}
               />
@@ -189,8 +261,11 @@ export function AdminOrdersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-hairline">
-                  {filteredOrders.map((order) => {
+                  {exceptionFilteredOrders.map((order) => {
                     const isDispatching = dispatchingId === order.id;
+                    const isFailed = order.currentStatus === ORDER_STATUS.FAILED;
+                    const attempts = order.failedAttemptCount ?? 0;
+                    const canReschedule = isFailed && attempts < MAX_FAILED_ATTEMPTS;
 
                     return (
                       <tr
@@ -218,6 +293,11 @@ export function AdminOrdersPage() {
                           </div>
                           <div className="text-[10px] text-ink-variant/80 mt-0.5">
                             {order.orderType} · {order.isCOD ? 'COD' : 'Prepaid'}
+                            {isFailed && attempts > 0 ? (
+                              <span className="ml-2 text-warning font-semibold">
+                                · Attempt {attempts}/{MAX_FAILED_ATTEMPTS}
+                              </span>
+                            ) : null}
                           </div>
                         </td>
 
@@ -253,6 +333,20 @@ export function AdminOrdersPage() {
                             >
                               Dispatch
                             </Button>
+                          ) : canReschedule ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              leftIcon={<RotateCcw className="w-3 h-3" />}
+                              onClick={(e) => handleReschedule(e, order)}
+                            >
+                              Reschedule
+                            </Button>
+                          ) : isFailed ? (
+                            <span className="text-[10px] text-danger font-semibold inline-flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              RTO Initiated
+                            </span>
                           ) : (
                             <ChevronRight className="w-4 h-4 text-ink-variant/40 group-hover:text-ink transition-colors inline-block" />
                           )}
@@ -274,6 +368,25 @@ export function AdminOrdersPage() {
             onPageChange={(newPage) => setPage(newPage)}
           />
         </div>
+
+        {/* Reschedule Modal */}
+        {rescheduleOrder && (
+          <RescheduleModal
+            isOpen={rescheduleOpen}
+            onClose={() => {
+              setRescheduleOpen(false);
+              setRescheduleOrder(null);
+            }}
+            orderId={rescheduleOrder.id}
+            orderNumber={rescheduleOrder.orderNumber}
+            failedAttemptCount={rescheduleOrder.failedAttemptCount ?? 0}
+            onSuccess={() => {
+              setRescheduleOpen(false);
+              setRescheduleOrder(null);
+              refetch();
+            }}
+          />
+        )}
       </div>
     </div>
   );

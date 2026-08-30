@@ -9,7 +9,7 @@ import { Skeleton } from '../../components/ui/Skeleton.jsx';
 import { DeliverOtpModal } from './DeliverOtpModal.jsx';
 import { ReportFailureModal } from './ReportFailureModal.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
-import { formatCurrency, formatWeight, formatDimensions, formatDate } from '../../lib/format.js';
+import { formatCurrency, formatWeight, formatDimensions, formatDate, formatDateTime } from '../../lib/format.js';
 import { ORDER_STATUS } from '../../lib/constants.js';
 import { getErrorMessage } from '../../lib/errors.js';
 import {
@@ -26,6 +26,7 @@ import {
   RotateCcw,
   Copy,
   Check,
+  Clock,
 } from 'lucide-react';
 
 export function AgentOrderDetailPage() {
@@ -49,6 +50,15 @@ export function AgentOrderDetailPage() {
     queryFn: () => ordersApi.getOrder(id),
     enabled: Boolean(id),
   });
+
+  // Fetch Timeline
+  const { data: timelineData } = useQuery({
+    queryKey: ['agent_order_timeline', id],
+    queryFn: () => ordersApi.getOrderTimeline(id),
+    enabled: Boolean(id),
+  });
+
+  const timelineItems = timelineData?.items || [];
 
   const handleCopyWaybill = () => {
     if (!order?.orderNumber) return;
@@ -220,6 +230,43 @@ export function AgentOrderDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Audit Timeline (shows reschedule & failure history) */}
+        {timelineItems.length > 0 && (
+          <div className="bg-container-lowest hairline rounded-2xl p-4 sm:p-5 shadow-card space-y-3">
+            <div className="flex items-center justify-between border-b border-hairline pb-2.5">
+              <div className="label-caps text-xs text-ink font-bold flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-primary" />
+                <span>Task History</span>
+              </div>
+              <span className="text-[10px] text-ink-variant tabular">
+                {timelineItems.length} {timelineItems.length === 1 ? 'Event' : 'Events'}
+              </span>
+            </div>
+
+            <div className="space-y-3 relative pl-3 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-[2px] before:bg-hairline">
+              {timelineItems.map((evt, idx) => (
+                <div key={evt.id || idx} className="relative pl-3 space-y-0.5">
+                  <div className="absolute -left-[6px] top-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-container-lowest" />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusChip status={evt.toStatus} />
+                    <span className="text-[10px] text-ink-variant/70 tabular">
+                      {formatDateTime(evt.changedAt)}
+                    </span>
+                  </div>
+                  {evt.note && (
+                    <p className="text-[11px] text-ink leading-relaxed">{evt.note}</p>
+                  )}
+                  {evt.failureReason && (
+                    <p className="text-[11px] text-danger font-medium">
+                      Failure: {evt.failureReason}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Terminal Status Notices */}
         {isDelivered && (

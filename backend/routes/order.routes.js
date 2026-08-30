@@ -15,6 +15,7 @@ router.use(authenticate);
 
 router.post('/', asyncHandler(orderController.create));
 router.get('/', asyncHandler(orderController.list));
+router.get('/lookup', asyncHandler(orderController.lookupByOrderNumber));
 router.get('/:id', asyncHandler(orderController.getById));
 router.get('/:id/timeline', asyncHandler(orderController.timeline));
 router.post('/:id/dispatch', requireRole('ADMIN'), asyncHandler(orderController.dispatch));

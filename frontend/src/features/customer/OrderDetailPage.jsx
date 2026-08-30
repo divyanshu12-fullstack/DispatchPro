@@ -379,6 +379,7 @@ export function OrderDetailPage() {
           onClose={() => setIsRescheduleOpen(false)}
           orderId={order.id}
           orderNumber={order.orderNumber}
+          failedAttemptCount={order.failedAttemptCount ?? 0}
           onSuccess={handleRefreshAll}
         />
       </div>

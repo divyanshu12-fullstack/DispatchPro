@@ -110,6 +110,15 @@ export const ordersApi = {
   },
 
   /**
+   * Lookup a single order by orderNumber (waybill).
+   * @param {string} orderNumber
+   * @returns {Promise<any>}
+   */
+  lookupByOrderNumber(orderNumber) {
+    return apiClient.get('/orders/lookup', { params: { orderNumber } });
+  },
+
+  /**
    * Reschedule a FAILED order for a new future delivery date (Customer or Admin).
    * @param {string} id
    * @param {{ newDeliveryDate: string }} payload
