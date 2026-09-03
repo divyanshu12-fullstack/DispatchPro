@@ -248,7 +248,7 @@ export function OrderDetailPage() {
               <div className="flex items-center justify-between border-b border-hairline pb-3">
                 <div className="label-caps text-xs text-ink font-bold flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-primary" />
-                  <span>Immutable Audit Timeline</span>
+                  <span>Order Timeline</span>
                 </div>
                 <span className="text-[11px] text-ink-variant tabular">
                   {timelineItems.length} {timelineItems.length === 1 ? 'Event' : 'Events'}
@@ -341,32 +341,6 @@ export function OrderDetailPage() {
                   <span className="font-bold text-ink tabular">
                     {formatCurrency(order.declaredValue || order.pricing?.totalAmount)}
                   </span>
-                </div>
-              )}
-            </div>
-
-            {/* Courier Assignment Card */}
-            <div className="bg-container-lowest hairline rounded-lg p-5 shadow-card space-y-3">
-              <div className="label-caps text-xs text-ink font-bold flex items-center gap-1.5">
-                <Truck className="w-3.5 h-3.5 text-primary" />
-                <span>Courier Assignment</span>
-              </div>
-
-              {order.assignedAgent ? (
-                <div className="flex items-center gap-3 p-3 bg-container-low rounded hairline text-xs">
-                  <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-ink">Field Delivery Agent Assigned</div>
-                    <div className="text-[11px] text-ink-variant">Assigned for local zone dispatch</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 bg-container-low rounded hairline text-xs text-ink-variant">
-                  {order.currentStatus === ORDER_STATUS.CREATED
-                    ? 'Pending automated dispatch assignment to zone courier.'
-                    : 'No courier currently assigned.'}
                 </div>
               )}
             </div>
