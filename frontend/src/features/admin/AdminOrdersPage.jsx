@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '../../api/orders.api.js';
 import { StatusChip } from '../../components/domain/StatusChip.jsx';
@@ -49,14 +49,22 @@ const EXCEPTION_FILTERS = [
 export function AdminOrdersPage() {
   const navigate = useNavigate();
   const toast = useToast();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [exceptionFilter, setExceptionFilter] = useState(null);
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState(urlSearch);
   const [dispatchingId, setDispatchingId] = useState(null);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleOrder, setRescheduleOrder] = useState(null);
+
+  // Synchronize when URL search param updates (e.g. from Navbar search submit)
+  useEffect(() => {
+    setSearchInput(urlSearch);
+    setPage(1);
+  }, [urlSearch]);
 
   const {
     data,
@@ -64,10 +72,11 @@ export function AdminOrdersPage() {
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['admin_all_orders', { page, status: statusFilter, exception: exceptionFilter }],
+    queryKey: ['admin_all_orders', { page, status: statusFilter, exception: exceptionFilter, search: searchInput.trim() }],
     queryFn: () => {
       const params = { page, limit: 15 };
       if (statusFilter !== 'ALL') params.status = statusFilter;
+      if (searchInput.trim()) params.search = searchInput.trim();
       return ordersApi.listOrders(params);
     },
   });
@@ -75,15 +84,8 @@ export function AdminOrdersPage() {
   const orders = data?.items || [];
   const pagination = data?.pagination || { total: 0, page: 1, limit: 15, pages: 1 };
 
-  // Client search filter across current page
-  const filteredOrders = orders.filter((o) => {
-    if (!searchInput.trim()) return true;
-    const q = searchInput.trim().toLowerCase();
-    const num = (o.orderNumber || '').toLowerCase();
-    const pPin = (o.pickup?.pincode || '').toLowerCase();
-    const dPin = (o.drop?.pincode || '').toLowerCase();
-    return num.includes(q) || pPin.includes(q) || dPin.includes(q);
-  });
+  // Orders are queried server-side across the entire ledger
+  const filteredOrders = orders;
 
   // Exception filter for FAILED orders
   const exceptionFilteredOrders = exceptionFilter

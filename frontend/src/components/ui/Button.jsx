@@ -55,7 +55,7 @@ export function Button({
       ) : (
         leftIcon && <span className="shrink-0">{leftIcon}</span>
       )}
-      <span>{children}</span>
+      {children}
       {!isLoading && rightIcon && <span className="shrink-0">{rightIcon}</span>}
     </button>
   );

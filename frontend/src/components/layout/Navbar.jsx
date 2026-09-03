@@ -30,6 +30,7 @@ export function Navbar() {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isTogglingDuty, setIsTogglingDuty] = useState(false);
   const profileRef = useRef(null);
 
@@ -57,10 +58,13 @@ export function Navbar() {
 
     if (user?.role === 'ADMIN') {
       navigate(`/admin/orders?search=${encodeURIComponent(query)}`);
+    } else if (user?.role === 'AGENT') {
+      navigate(`/agent?search=${encodeURIComponent(query)}`);
     } else {
       navigate(`/app?search=${encodeURIComponent(query)}`);
     }
     setSearchQuery('');
+    setIsMobileSearchOpen(false);
   };
 
   // Agent self-duty availability toggle
@@ -155,6 +159,17 @@ export function Navbar() {
         <div className="flex items-center gap-3 shrink-0">
           {isAuthenticated ? (
             <>
+              {/* Mobile Search Toggle */}
+              <button
+                type="button"
+                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                className="md:hidden p-2 rounded-full hover:bg-container-low text-ink-variant hover:text-ink transition-colors cursor-pointer"
+                title="Search shipments"
+                aria-label="Toggle search bar"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+
               {/* Agent Duty Toggle in Header */}
               {user?.role === 'AGENT' && (
                 <button
@@ -293,6 +308,23 @@ export function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mobile Search Expandable Bar */}
+      {isAuthenticated && isMobileSearchOpen && (
+        <div className="md:hidden px-4 pb-3 pt-1 border-t border-hairline bg-surface animate-in fade-in slide-in-from-top-1">
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-variant/50 pointer-events-none" />
+            <input
+              type="text"
+              autoFocus
+              placeholder="Search tracking ID, address, or pincode..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-container-lowest text-xs text-ink placeholder:text-ink-variant/50 rounded-lg pl-9 pr-4 py-2.5 hairline focus:outline-none focus:border-primary shadow-xs transition-all"
+            />
+          </form>
+        </div>
+      )}
 
       {/* Tier 2: Only Rendered for ADMIN Console */}
       {showAdminSubNav && (

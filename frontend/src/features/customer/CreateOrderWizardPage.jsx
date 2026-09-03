@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { ordersApi } from '../../api/orders.api.js';
 import { PriceBreakdown } from '../../components/domain/PriceBreakdown.jsx';
@@ -109,6 +109,15 @@ export function CreateOrderWizardPage() {
   const [copied, setCopied] = useState(false);
 
   const tomorrowStr = getTomorrowDateString();
+
+  // Automatically scroll to top when moving between wizard steps or completing order
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+    if (typeof document !== 'undefined') {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, [currentStep, createdOrder]);
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

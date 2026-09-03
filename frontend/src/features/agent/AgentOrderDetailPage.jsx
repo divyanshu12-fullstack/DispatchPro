@@ -27,6 +27,7 @@ import {
   Copy,
   Check,
   Clock,
+  ArrowDown,
 } from 'lucide-react';
 
 export function AgentOrderDetailPage() {
@@ -244,26 +245,76 @@ export function AgentOrderDetailPage() {
               </span>
             </div>
 
-            <div className="space-y-3 relative pl-3 before:absolute before:left-1.5 before:top-1 before:bottom-1 before:w-[2px] before:bg-hairline">
-              {timelineItems.map((evt, idx) => (
-                <div key={evt.id || idx} className="relative pl-3 space-y-0.5">
-                  <div className="absolute -left-[6px] top-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-container-lowest" />
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <StatusChip status={evt.toStatus} />
-                    <span className="text-[10px] text-ink-variant/70 tabular">
-                      {formatDateTime(evt.changedAt)}
-                    </span>
+            <div className="relative pt-1">
+              {timelineItems.map((evt, idx) => {
+                const isLast = idx === timelineItems.length - 1;
+                const isDelivered = evt.toStatus === ORDER_STATUS.DELIVERED;
+                const isFailed =
+                  evt.toStatus === ORDER_STATUS.FAILED ||
+                  evt.toStatus === ORDER_STATUS.RETURN_TO_ORIGIN;
+                const isRescheduled = evt.toStatus === ORDER_STATUS.RESCHEDULED;
+
+                return (
+                  <div key={evt.id || idx} className="flex items-stretch group">
+                    {/* Left Track Column: Node + Connector Line + Directional Arrow */}
+                    <div className="shrink-0 flex flex-col items-center w-5 sm:w-6 relative">
+                      {/* Node Bullet */}
+                      <div
+                        className={`w-3 h-3 rounded-full flex items-center justify-center shrink-0 z-10 ${
+                          isDelivered
+                            ? 'bg-success ring-3 ring-success-soft/80'
+                            : isFailed
+                            ? 'bg-danger ring-3 ring-danger-soft/80'
+                            : isRescheduled
+                            ? 'bg-amber-500 ring-3 ring-amber-100'
+                            : 'bg-primary ring-3 ring-container-lowest shadow-xs'
+                        }`}
+                      >
+                        <span className="w-1 h-1 rounded-full bg-white" />
+                      </div>
+
+                      {/* Connecting Line to next event with downward arrow */}
+                      {!isLast && (
+                        <div className="flex-1 w-[2px] bg-hairline relative flex items-center justify-center my-0.5 min-h-[28px]">
+                          <div className="absolute top-1/2 -translate-y-1/2 p-0.5 bg-container-lowest rounded-full border border-hairline/80 shadow-2xs">
+                            <ArrowDown className="w-2 h-2 text-ink-variant/60" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Content Column */}
+                    <div className={`flex-1 min-w-0 pl-2.5 sm:pl-3 ${isLast ? 'pb-1' : 'pb-5'}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <StatusChip status={evt.toStatus} />
+                        <span className="text-[10px] text-ink-variant/70 tabular">
+                          {formatDateTime(evt.changedAt)}
+                        </span>
+                      </div>
+
+                      {evt.note && (
+                        <div className="text-[11px] text-ink bg-container-low/60 hairline rounded-lg px-2.5 py-1.5 mt-1.5 leading-relaxed font-normal">
+                          {evt.note.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, (match) => {
+                            try {
+                              const d = new Date(match);
+                              return isNaN(d.getTime()) ? match : formatDateTime(d);
+                            } catch {
+                              return match;
+                            }
+                          })}
+                        </div>
+                      )}
+
+                      {evt.failureReason && (
+                        <div className="text-[11px] text-danger bg-danger-soft/40 hairline border-danger/30 rounded-lg px-2.5 py-1.5 mt-1.5 font-medium flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          <span>Failure: {evt.failureReason}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {evt.note && (
-                    <p className="text-[11px] text-ink leading-relaxed">{evt.note}</p>
-                  )}
-                  {evt.failureReason && (
-                    <p className="text-[11px] text-danger font-medium">
-                      Failure: {evt.failureReason}
-                    </p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

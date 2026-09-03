@@ -191,6 +191,21 @@ export async function listOrdersForUser({ caller, query = {} }) {
     throw ApiError.forbidden('You do not have access to orders');
   }
 
+  if (query.search && typeof query.search === 'string') {
+    const term = query.search.trim();
+    if (term) {
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escaped, 'i');
+      filter.$or = [
+        { orderNumber: searchRegex },
+        { pickupPincode: searchRegex },
+        { dropPincode: searchRegex },
+        { pickupAddress: searchRegex },
+        { dropAddress: searchRegex },
+      ];
+    }
+  }
+
   const [items, total] = await Promise.all([
     Order.find(filter)
       .sort({ createdAt: -1 })

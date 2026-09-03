@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '../../api/orders.api.js';
 import { authApi } from '../../api/auth.api.js';
@@ -11,7 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState.jsx';
 import { DeliverOtpModal } from './DeliverOtpModal.jsx';
 import { ReportFailureModal } from './ReportFailureModal.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
-import { formatCurrency } from '../../lib/format.js';
+import { formatCurrency, formatDate } from '../../lib/format.js';
 import { ORDER_STATUS } from '../../lib/constants.js';
 import { getErrorMessage } from '../../lib/errors.js';
 import {
@@ -26,6 +26,8 @@ import {
   Navigation,
   CheckCircle2,
   Power,
+  Calendar,
+  X,
 } from 'lucide-react';
 
 const ACTIVE_STATUSES = new Set([
@@ -39,10 +41,17 @@ export function AgentDashboardPage() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
 
   const [activeTab, setActiveTab] = useState('ACTIVE'); // 'ACTIVE' | 'HISTORY'
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState(urlSearch);
   const [isTogglingDuty, setIsTogglingDuty] = useState(false);
+
+  // Synchronize when URL search param updates (e.g. from Navbar search submit)
+  useEffect(() => {
+    setSearchInput(urlSearch);
+  }, [urlSearch]);
 
   // Modals state
   const [otpModalOrder, setOtpModalOrder] = useState(null);
@@ -115,12 +124,12 @@ export function AgentDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface py-4 sm:py-8 pb-20">
+    <div className="min-h-screen bg-surface py-4 sm:py-4 pb-20">
       <div className="max-w-xl mx-auto px-3 sm:px-6 space-y-4 sm:space-y-6">
 
-        {/* Tab & Search Strip */}
-        <div className="space-y-2.5">
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-container-low hairline rounded-xl">
+        {/* Tab & Search Strip (Sticky on scroll for courier mobile ergonomics) */}
+        <div className="sticky top-15 z-20 bg-surface/95 backdrop-blur py-2 space-y-2.5">
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-container-low hairline rounded-xl shadow-xs">
             <button
               onClick={() => setActiveTab('ACTIVE')}
               className={`py-2.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -157,8 +166,18 @@ export function AgentDashboardPage() {
               placeholder="Search tracking ID, address, or pincode..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full bg-container-lowest text-xs text-ink placeholder:text-ink-variant/50 rounded-xl pl-10 pr-4 py-3 hairline focus:outline-none focus:border-primary shadow-xs transition-colors"
+              className="w-full bg-container-lowest text-xs text-ink placeholder:text-ink-variant/50 rounded-xl pl-10 pr-10 py-3 hairline focus:outline-none focus:border-primary shadow-xs transition-colors"
             />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-ink-variant/50 hover:text-ink rounded-full cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -207,10 +226,19 @@ export function AgentDashboardPage() {
                       <span className="font-display font-bold text-sm sm:text-base text-ink tabular tracking-tight">
                         {order.orderNumber}
                       </span>
-                      <div className="text-[11px] text-ink-variant mt-0.5 flex items-center gap-1.5">
+                      <div className="text-[11px] text-ink-variant mt-0.5 flex flex-wrap items-center gap-1.5">
                         <span>{order.orderType} Shipment</span>
                         <span>·</span>
                         <span>{order.actualWeightKg} kg</span>
+                        {order.scheduledDeliveryDate && (
+                          <>
+                            <span>·</span>
+                            <span className="inline-flex items-center gap-1 text-ink">
+                              <Calendar className="w-3 h-3 text-ink-variant" />
+                              {formatDate(order.scheduledDeliveryDate)}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -228,26 +256,68 @@ export function AgentDashboardPage() {
                     </div>
                   </div>
 
-                  {/* Destination Address Card */}
-                  <div className="p-3 bg-container-low/80 rounded-xl hairline text-xs space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2 flex-1">
-                        <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                        <div>
-                          <div className="label-caps text-[9px] text-ink-variant">
-                            Drop: {order.drop?.pincode}
+                  {/* Route Card: For ASSIGNED orders, show Pickup location first so agent knows where to go */}
+                  <div className="p-3 bg-container-low/80 rounded-xl hairline text-xs space-y-2.5">
+                    {order.currentStatus === ORDER_STATUS.ASSIGNED ? (
+                      <div className="space-y-2">
+                        {/* Pickup Location */}
+                        <div className="flex items-start gap-2">
+                          <div className="w-5 h-5 rounded-full bg-primary text-on-primary flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">
+                            ↑
                           </div>
-                          <p className="text-ink font-semibold line-clamp-2 mt-0.5 text-xs">
-                            {order.drop?.address || 'Delivery Address'}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="label-caps text-[9px] font-bold text-primary">Pickup Hub / Sender</span>
+                              <span className="font-mono text-[10px] text-ink-variant font-semibold">{order.pickup?.pincode}</span>
+                            </div>
+                            <p className="text-ink font-semibold text-xs mt-0.5 line-clamp-2">
+                              {order.pickup?.address || 'Pickup Address'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Destination Drop */}
+                        <div className="pt-2 border-t border-hairline/60 flex items-start gap-2">
+                          <MapPin className="w-4 h-4 text-ink-variant shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="label-caps text-[9px] text-ink-variant">Destination</span>
+                              <span className="font-mono text-[10px] text-ink-variant">{order.drop?.pincode}</span>
+                            </div>
+                            <p className="text-ink-variant text-xs mt-0.5 line-clamp-1">
+                              {order.drop?.address || 'Delivery Address'}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* Out for delivery / In transit / Delivered */
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="label-caps text-[9px] text-ink-variant">
+                              Drop: {order.drop?.pincode}
+                            </div>
+                            <p className="text-ink font-semibold line-clamp-2 mt-0.5 text-xs">
+                              {order.drop?.address || 'Delivery Address'}
+                            </p>
+                          </div>
+                        </div>
 
-                    {isCOD && order.currentStatus === ORDER_STATUS.OUT_FOR_DELIVERY && (
-                      <div className="pt-1.5 border-t border-hairline flex items-center justify-between text-[11px] text-[#735c00] font-bold">
-                        <span>Collect Cash at Door:</span>
-                        <span className="tabular font-display text-xs">{formatCurrency(codAmount)}</span>
+                        {isCOD && order.currentStatus === ORDER_STATUS.OUT_FOR_DELIVERY && (
+                          <div className="pt-1.5 border-t border-hairline flex items-center justify-between text-[11px] text-[#735c00] font-bold">
+                            <span>Collect Cash at Door:</span>
+                            <span className="tabular font-display text-xs">{formatCurrency(codAmount)}</span>
+                          </div>
+                        )}
+
+                        {order.lastFailureReason && (
+                          <div className="pt-1.5 border-t border-hairline/60 text-[11px] text-danger font-medium flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span>Failed: {order.lastFailureReason}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

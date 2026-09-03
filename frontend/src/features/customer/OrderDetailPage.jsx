@@ -21,9 +21,8 @@ import {
   RotateCcw,
   AlertTriangle,
   Clock,
-  User,
   Box,
-  Truck,
+  ArrowDown,
 } from 'lucide-react';
 
 export function OrderDetailPage() {
@@ -264,37 +263,83 @@ export function OrderDetailPage() {
                   No lifecycle transitions recorded yet.
                 </div>
               ) : (
-                <div className="space-y-4 relative pl-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-hairline">
-                  {timelineItems.map((evt, idx) => (
-                    <div key={evt.id || idx} className="relative pl-4 space-y-1">
-                      {/* Node Bullet */}
-                      <div className="absolute -left-[14px] top-1 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-container-lowest" />
+                <div className="relative">
+                  {timelineItems.map((evt, idx) => {
+                    const isLast = idx === timelineItems.length - 1;
+                    const isDelivered = evt.toStatus === ORDER_STATUS.DELIVERED;
+                    const isFailed =
+                      evt.toStatus === ORDER_STATUS.FAILED ||
+                      evt.toStatus === ORDER_STATUS.RETURN_TO_ORIGIN;
+                    const isRescheduled = evt.toStatus === ORDER_STATUS.RESCHEDULED;
 
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <StatusChip status={evt.toStatus} />
-                          {evt.actorRole && (
-                            <span className="px-1.5 py-0.5 rounded bg-container-low text-[9px] font-mono text-ink-variant">
-                              by {evt.actorRole}
-                            </span>
+                    return (
+                      <div key={evt.id || idx} className="flex items-stretch group">
+                        {/* Left Track Column: Node + Connector Line + Directional Arrow */}
+                        <div className="shrink-0 flex flex-col items-center w-6 sm:w-7 relative">
+                          {/* Node Bullet */}
+                          <div
+                            className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 z-10 transition-transform ${
+                              isDelivered
+                                ? 'bg-success ring-4 ring-success-soft/80'
+                                : isFailed
+                                ? 'bg-danger ring-4 ring-danger-soft/80'
+                                : isRescheduled
+                                ? 'bg-amber-500 ring-4 ring-amber-100'
+                                : 'bg-primary ring-4 ring-container-lowest shadow-xs'
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                          </div>
+
+                          {/* Connecting Line to next event with downward arrow */}
+                          {!isLast && (
+                            <div className="flex-1 w-[2px] bg-hairline relative flex items-center justify-center my-0.5 min-h-[32px]">
+                              <div className="absolute top-1/2 -translate-y-1/2 p-0.5 bg-container-lowest rounded-full border border-hairline/80 shadow-2xs">
+                                <ArrowDown className="w-2.5 h-2.5 text-ink-variant/60" />
+                              </div>
+                            </div>
                           )}
                         </div>
-                        <span className="text-[11px] text-ink-variant/70 tabular">
-                          {formatDateTime(evt.changedAt)}
-                        </span>
-                      </div>
 
-                      {evt.note && (
-                        <p className="text-xs text-ink leading-relaxed mt-1">{evt.note}</p>
-                      )}
+                        {/* Right Content Column */}
+                        <div className={`flex-1 min-w-0 pl-3 sm:pl-4 ${isLast ? 'pb-1' : 'pb-6'}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <StatusChip status={evt.toStatus} />
+                              {evt.actorRole && (
+                                <span className="px-1.5 py-0.5 rounded bg-container-low text-[10px] font-mono text-ink-variant font-medium">
+                                  by {evt.actorRole}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-ink-variant/70 tabular">
+                              {formatDateTime(evt.changedAt)}
+                            </span>
+                          </div>
 
-                      {evt.failureReason && (
-                        <div className="text-xs text-danger font-medium mt-1">
-                          Failure Reason: {evt.failureReason}
+                          {evt.note && (
+                            <div className="text-xs text-ink bg-container-low/60 hairline rounded-lg px-3 py-2 mt-2 leading-relaxed font-normal">
+                              {evt.note.replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?/g, (match) => {
+                                try {
+                                  const d = new Date(match);
+                                  return isNaN(d.getTime()) ? match : formatDateTime(d);
+                                } catch {
+                                  return match;
+                                }
+                              })}
+                            </div>
+                          )}
+
+                          {evt.failureReason && (
+                            <div className="text-xs text-danger bg-danger-soft/40 hairline border-danger/30 rounded-lg px-3 py-2 mt-2 font-medium flex items-center gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                              <span>Failure Reason: {evt.failureReason}</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

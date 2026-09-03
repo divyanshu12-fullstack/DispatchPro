@@ -212,12 +212,14 @@ export function AdminOverviewPage() {
                 className="w-full justify-between"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                <span>Dispatch</span>
-                {pendingDispatchCount > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-accent text-on-primary text-[10px] font-bold">
-                    {pendingDispatchCount} Pending
-                  </span>
-                )}
+                <span className="flex items-center gap-2">
+                  <span>Dispatch</span>
+                  {pendingDispatchCount > 0 && (
+                    <span className="inline-flex items-center leading-none px-2 py-0.5 rounded-full bg-accent text-primary text-[10px] font-bold">
+                      {pendingDispatchCount} Pending
+                    </span>
+                  )}
+                </span>
               </Button>
             </Link>
           </div>
@@ -243,9 +245,11 @@ export function AdminOverviewPage() {
                 className="w-full justify-between"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                <span>Fleet</span>
-                <span className="text-xs text-ink-variant font-mono">
-                  {totalAgentsCount} Couriers
+                <span className="flex items-center gap-2">
+                  <span>Fleet</span>
+                  <span className="text-xs text-ink-variant font-medium">
+                    {totalAgentsCount} Couriers
+                  </span>
                 </span>
               </Button>
             </Link>
@@ -272,9 +276,11 @@ export function AdminOverviewPage() {
                 className="w-full justify-between"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                <span>Rate Cards</span>
-                <span className="text-xs text-ink-variant font-mono">
-                  4 Tiers
+                <span className="flex items-center gap-2">
+                  <span>Rate Cards</span>
+                  <span className="text-xs text-ink-variant font-medium">
+                    4 Tiers
+                  </span>
                 </span>
               </Button>
             </Link>
@@ -301,9 +307,11 @@ export function AdminOverviewPage() {
                 className="w-full justify-between"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
               >
-                <span>All Orders</span>
-                <span className="text-xs text-ink-variant font-mono">
-                  {totalOrdersCount} Total
+                <span className="flex items-center gap-2">
+                  <span>All Orders</span>
+                  <span className="text-xs text-ink-variant font-medium">
+                    {totalOrdersCount} Total
+                  </span>
                 </span>
               </Button>
             </Link>

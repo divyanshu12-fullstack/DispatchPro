@@ -36,14 +36,21 @@ export function CustomerDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
+  const [searchInput, setSearchInput] = useState(urlSearch);
+
+  // Synchronize when URL search param updates (e.g. Navbar search submit)
+  React.useEffect(() => {
+    setSearchInput(urlSearch);
+    setPage(1);
+  }, [urlSearch]);
 
   // Query server for customer orders
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['customer_orders', { page, status: statusFilter }],
+    queryKey: ['customer_orders', { page, status: statusFilter, search: searchInput.trim() }],
     queryFn: async () => {
       const params = {
         page,
@@ -52,6 +59,9 @@ export function CustomerDashboardPage() {
       if (statusFilter !== 'ALL') {
         params.status = statusFilter;
       }
+      if (searchInput.trim()) {
+        params.search = searchInput.trim();
+      }
       return ordersApi.listOrders(params);
     },
   });
@@ -59,15 +69,8 @@ export function CustomerDashboardPage() {
   const orders = data?.items || [];
   const pagination = data?.pagination || { total: 0, page: 1, limit: 10, pages: 1 };
 
-  // Client-side search filtering within retrieved page
-  const filteredOrders = orders.filter((o) => {
-    if (!searchInput.trim()) return true;
-    const q = searchInput.trim().toLowerCase();
-    const orderNum = (o.orderNumber || '').toLowerCase();
-    const pickupPin = (o.pickup?.pincode || '').toLowerCase();
-    const dropPin = (o.drop?.pincode || '').toLowerCase();
-    return orderNum.includes(q) || pickupPin.includes(q) || dropPin.includes(q);
-  });
+  // Orders are filtered server-side with strict customer scoping
+  const filteredOrders = orders;
 
   return (
     <div className="min-h-screen bg-surface py-8 sm:py-10">
