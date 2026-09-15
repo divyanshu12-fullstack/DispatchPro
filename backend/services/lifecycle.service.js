@@ -190,11 +190,14 @@ export async function transitionOrder({ caller, orderId, toStatus, failureReason
   // Post-commit: email notification (fire-and-log, never blocks response).
   if (actualToStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
     // The OTP email replaces the generic status email for this milestone —
-    // it carries both the update and the code the customer must share.
+    // it carries both the update and the code the receiver must share.
+    // Routes to dropContactEmail (receiver), falling back to placer email
+    // for old orders without receiver contacts.
     sendDeliveryOtpEmail({
       timeline,
       otp: plainDeliveryOtp,
       expiresAt: updatedOrder.deliveryOtpExpiresAt,
+      order: updatedOrder,
     }).catch((e) =>
       console.error('[lifecycle] unexpected sendDeliveryOtpEmail rejection:', e),
     );

@@ -86,7 +86,9 @@ export function AgentDashboardPage() {
       (o.orderNumber || '').toLowerCase().includes(q) ||
       (o.pickup?.pincode || '').includes(q) ||
       (o.drop?.pincode || '').includes(q) ||
-      (o.drop?.address || '').toLowerCase().includes(q)
+      (o.drop?.address || '').toLowerCase().includes(q) ||
+      (o.dropContact?.name || '').toLowerCase().includes(q) ||
+      (o.pickupContact?.name || '').toLowerCase().includes(q)
     );
   });
 
@@ -226,6 +228,11 @@ export function AgentDashboardPage() {
                       <span className="font-display font-bold text-sm sm:text-base text-ink tabular tracking-tight">
                         {order.orderNumber}
                       </span>
+                      {order.dropContact?.name ? (
+                        <div className="text-[11px] font-semibold text-ink mt-0.5 truncate">
+                          → {order.dropContact.name}
+                        </div>
+                      ) : null}
                       <div className="text-[11px] text-ink-variant mt-0.5 flex flex-wrap items-center gap-1.5">
                         <span>{order.orderType} Shipment</span>
                         <span>·</span>

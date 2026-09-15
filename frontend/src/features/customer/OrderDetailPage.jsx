@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '../../api/orders.api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import { WaybillHeader } from '../../components/domain/WaybillHeader.jsx';
 import { LifecycleStepper } from '../../components/domain/LifecycleStepper.jsx';
 import { PincodePair } from '../../components/domain/PincodePair.jsx';
 import { PriceBreakdown } from '../../components/domain/PriceBreakdown.jsx';
 import { StatusChip } from '../../components/domain/StatusChip.jsx';
+import { CustomerIdentity } from '../../components/domain/CustomerIdentity.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Skeleton } from '../../components/ui/Skeleton.jsx';
 import { RescheduleModal } from './RescheduleModal.jsx';
@@ -23,10 +25,12 @@ import {
   Clock,
   Box,
   ArrowDown,
+  Users,
 } from 'lucide-react';
 
 export function OrderDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
 
   // Fetch Order
@@ -96,6 +100,7 @@ export function OrderDetailPage() {
 
   const isFailed = order.currentStatus === ORDER_STATUS.FAILED;
   const isOutForDelivery = order.currentStatus === ORDER_STATUS.OUT_FOR_DELIVERY;
+  const showParties = user?.role !== 'CUSTOMER';
 
   return (
     <div className="min-h-screen bg-surface py-8 sm:py-10">
@@ -149,7 +154,13 @@ export function OrderDetailPage() {
                   </span>
                 </div>
                 <p className="text-xs text-ink-variant mt-1 leading-relaxed max-w-xl">
-                  Your field courier is en route with your package. A secure 6-digit confirmation code has been dispatched to your email. Please share this code upon arrival to confirm handover.
+                  Your field courier is en route with your package. A secure 6-digit confirmation code has been dispatched to{' '}
+                  {order.dropContact?.email ? (
+                    <strong className="text-ink">{order.dropContact.email}</strong>
+                  ) : (
+                    'your email'
+                  )}
+                  . Please share this code upon arrival to confirm handover.
                 </p>
               </div>
             </div>
@@ -207,11 +218,15 @@ export function OrderDetailPage() {
                   pincode: order.pickup?.pincode,
                   address: order.pickup?.address,
                   companyName: order.pickupCompanyName,
+                  contactName: order.pickupContact?.name,
+                  contactPhone: order.pickupContact?.phone,
                 }}
                 drop={{
                   pincode: order.drop?.pincode,
                   address: order.drop?.address,
                   companyName: order.dropCompanyName,
+                  contactName: order.dropContact?.name,
+                  contactPhone: order.dropContact?.phone,
                 }}
                 compact={false}
               />
@@ -241,6 +256,41 @@ export function OrderDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Parties card — admin / agent view only (customer sees own orders as before) */}
+            {showParties && (
+              <div className="bg-container-lowest hairline rounded-lg p-6 shadow-card space-y-4">
+                <div className="label-caps text-xs text-ink font-bold flex items-center gap-1.5 border-b border-hairline pb-3">
+                  <Users className="w-3.5 h-3.5 text-primary" />
+                  <span>Parties</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <CustomerIdentity
+                    label="Customer (Placer)"
+                    contact={{
+                      name: order.customer?.fullName,
+                      email: order.customer?.email,
+                      phone: order.customer?.phone,
+                    }}
+                  />
+                  <CustomerIdentity
+                    label="Sender (Pickup)"
+                    contact={{
+                      name: order.pickupContact?.name,
+                      phone: order.pickupContact?.phone,
+                    }}
+                  />
+                  <CustomerIdentity
+                    label="Receiver (Drop)"
+                    contact={{
+                      name: order.dropContact?.name,
+                      email: order.dropContact?.email,
+                      phone: order.dropContact?.phone,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Immutable Audit Timeline Stream */}
             <div className="bg-container-lowest hairline rounded-lg p-6 shadow-card space-y-5">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { ordersApi } from '../../api/orders.api.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import { PriceBreakdown } from '../../components/domain/PriceBreakdown.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
@@ -23,7 +24,7 @@ import {
   Scale,
 } from 'lucide-react';
 
-function getInitialFormData() {
+function getInitialFormData(user) {
   const defaultValues = {
     // Shipment Type
     orderType: ORDER_TYPES.B2C,
@@ -31,6 +32,8 @@ function getInitialFormData() {
     // Step 1: Pickup Location
     pickupCompanyName: '',
     pickupGstin: '',
+    pickupContactName: user?.fullName || '',
+    pickupContactPhone: user?.phone || '',
     pickupBuilding: 'Plot 42, 3rd Floor',
     pickupStreet: 'Cyber City, Phase 2',
     pickupCity: 'Gurugram',
@@ -40,6 +43,9 @@ function getInitialFormData() {
     // Step 1: Drop Destination
     dropCompanyName: '',
     dropGstin: '',
+    dropContactName: '',
+    dropContactEmail: '',
+    dropContactPhone: '',
     dropBuilding: 'Shop 14, Main Market',
     dropStreet: 'Near Clock Tower',
     dropCity: 'New Delhi',
@@ -95,9 +101,10 @@ function getTomorrowDateString() {
 
 export function CreateOrderWizardPage() {
   const toast = useToast();
+  const { user } = useAuth();
 
   // Form State
-  const [formData, setFormData] = useState(getInitialFormData);
+  const [formData, setFormData] = useState(() => getInitialFormData(user));
   const [currentStep, setCurrentStep] = useState(1);
   const [fieldErrors, setFieldErrors] = useState({});
   const [quoteResult, setQuoteResult] = useState(null);
@@ -118,6 +125,17 @@ export function CreateOrderWizardPage() {
       document.body.scrollTop = 0;
     }
   }, [currentStep, createdOrder]);
+
+  // Default pickup contact name from logged-in user (only if empty).
+  useEffect(() => {
+    if (user?.fullName) {
+      setFormData((prev) => (prev.pickupContactName ? prev : { ...prev, pickupContactName: user.fullName }));
+    }
+    if (user?.phone) {
+      setFormData((prev) => (prev.pickupContactPhone ? prev : { ...prev, pickupContactPhone: user.phone }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.fullName, user?.phone]);
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -170,6 +188,33 @@ export function CreateOrderWizardPage() {
     }
     if (!formData.dropPincode || formData.dropPincode.trim().length !== 6) {
       errors.dropPincode = 'Valid 6-digit destination pincode required';
+    }
+
+    // Sender contact (person at pickup end)
+    const PHONE_RE = /^[\d\s\-+()]{7,20}$/;
+    const EMAIL_RE = /^\S+@\S+\.\S+$/;
+    if (!formData.pickupContactName?.trim() || formData.pickupContactName.trim().length < 2 || formData.pickupContactName.trim().length > 80) {
+      errors.pickupContactName = 'Sender name is required (2–80 chars)';
+    }
+    if (!formData.pickupContactPhone?.trim()) {
+      errors.pickupContactPhone = 'Sender phone is required';
+    } else if (!PHONE_RE.test(formData.pickupContactPhone.trim())) {
+      errors.pickupContactPhone = 'Enter a valid phone number';
+    }
+
+    // Receiver contact (person at drop end)
+    if (!formData.dropContactName?.trim() || formData.dropContactName.trim().length < 2 || formData.dropContactName.trim().length > 80) {
+      errors.dropContactName = 'Receiver name is required (2–80 chars)';
+    }
+    if (!formData.dropContactEmail?.trim()) {
+      errors.dropContactEmail = 'Receiver email is required';
+    } else if (!EMAIL_RE.test(formData.dropContactEmail.trim())) {
+      errors.dropContactEmail = 'Enter a valid receiver email';
+    }
+    if (!formData.dropContactPhone?.trim()) {
+      errors.dropContactPhone = 'Receiver phone is required';
+    } else if (!PHONE_RE.test(formData.dropContactPhone.trim())) {
+      errors.dropContactPhone = 'Enter a valid phone number';
     }
 
     // B2B Commercial Fields validation
@@ -312,6 +357,11 @@ export function CreateOrderWizardPage() {
         pickupAddress,
         dropPincode: formData.dropPincode.trim(),
         dropAddress,
+        pickupContactName: formData.pickupContactName.trim(),
+        pickupContactPhone: formData.pickupContactPhone.trim(),
+        dropContactName: formData.dropContactName.trim(),
+        dropContactEmail: formData.dropContactEmail.trim().toLowerCase(),
+        dropContactPhone: formData.dropContactPhone.trim(),
         actualWeightKg: parseFloat(formData.actualWeightKg),
         dimensions: {
           lengthCm: parseFloat(formData.lengthCm),
@@ -658,6 +708,27 @@ export function CreateOrderWizardPage() {
                     required
                   />
                 </div>
+
+                {/* Sender contact (person at pickup end) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Pickup Contact Name"
+                    placeholder="e.g. Rahul Sharma"
+                    value={formData.pickupContactName}
+                    onChange={(e) => handleFieldChange('pickupContactName', e.target.value)}
+                    error={fieldErrors.pickupContactName}
+                    required
+                  />
+                  <Input
+                    label="Pickup Contact Phone"
+                    placeholder="e.g. +91 98110 12345"
+                    value={formData.pickupContactPhone}
+                    onChange={(e) => handleFieldChange('pickupContactPhone', e.target.value)}
+                    error={fieldErrors.pickupContactPhone}
+                    helperText="Courier may call for pickup"
+                    required
+                  />
+                </div>
               </div>
 
               {/* 2. Drop Destination Address Card */}
@@ -742,6 +813,35 @@ export function CreateOrderWizardPage() {
                     error={fieldErrors.dropPincode}
                     numericOnly
                     maxLength={6}
+                    required
+                  />
+                </div>
+
+                {/* Receiver contact (person at drop end — OTP goes to this email) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Input
+                    label="Receiver Name"
+                    placeholder="e.g. Priya Verma"
+                    value={formData.dropContactName}
+                    onChange={(e) => handleFieldChange('dropContactName', e.target.value)}
+                    error={fieldErrors.dropContactName}
+                    required
+                  />
+                  <Input
+                    label="Receiver Email"
+                    placeholder="e.g. priya@example.com"
+                    value={formData.dropContactEmail}
+                    onChange={(e) => handleFieldChange('dropContactEmail', e.target.value)}
+                    error={fieldErrors.dropContactEmail}
+                    helperText="Delivery OTP goes here"
+                    required
+                  />
+                  <Input
+                    label="Receiver Phone"
+                    placeholder="e.g. +91 98220 54321"
+                    value={formData.dropContactPhone}
+                    onChange={(e) => handleFieldChange('dropContactPhone', e.target.value)}
+                    error={fieldErrors.dropContactPhone}
                     required
                   />
                 </div>
@@ -925,6 +1025,10 @@ export function CreateOrderWizardPage() {
                     {composeAddress(formData.pickupBuilding, formData.pickupStreet, formData.pickupCity, formData.pickupState)}
                   </div>
                   <div className="text-ink-variant text-[11px]">Pincode: {formData.pickupPincode}</div>
+                  <div className="text-ink-variant text-[11px]">
+                    Sender: <span className="text-ink font-medium">{formData.pickupContactName || 'N/A'}</span>
+                    {formData.pickupContactPhone ? ` · ${formData.pickupContactPhone}` : ''}
+                  </div>
                 </div>
 
                 <div className="p-4 bg-container-low/60 hairline rounded-xl space-y-1">
@@ -936,6 +1040,13 @@ export function CreateOrderWizardPage() {
                     {composeAddress(formData.dropBuilding, formData.dropStreet, formData.dropCity, formData.dropState)}
                   </div>
                   <div className="text-ink-variant text-[11px]">Pincode: {formData.dropPincode}</div>
+                  <div className="text-ink-variant text-[11px]">
+                    Receiver: <span className="text-ink font-medium">{formData.dropContactName || 'N/A'}</span>
+                    {formData.dropContactPhone ? ` · ${formData.dropContactPhone}` : ''}
+                  </div>
+                  {formData.dropContactEmail ? (
+                    <div className="text-ink-variant text-[11px]">OTP → {formData.dropContactEmail}</div>
+                  ) : null}
                 </div>
               </div>
 

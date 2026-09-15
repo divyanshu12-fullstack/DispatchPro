@@ -12,7 +12,21 @@ function shapeOrder(o) {
     id: o._id,
     orderNumber: o.orderNumber,
     placedBy: o.placedBy,
-    customer: o.customer,
+    customer: {
+      id: o.customer,
+      fullName: o.customerFullName ?? null,
+      email: o.customerEmail ?? null,
+      phone: o.customerPhone ?? null,
+    },
+    pickupContact: {
+      name: o.pickupContactName ?? null,
+      phone: o.pickupContactPhone ?? null,
+    },
+    dropContact: {
+      name: o.dropContactName ?? null,
+      email: o.dropContactEmail ?? null,
+      phone: o.dropContactPhone ?? null,
+    },
     assignedAgent: o.assignedAgent,
     pickup: {
       pincode: o.pickupPincode,

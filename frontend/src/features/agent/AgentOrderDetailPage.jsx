@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '../../api/orders.api.js';
 import { StatusChip } from '../../components/domain/StatusChip.jsx';
 import { PincodePair } from '../../components/domain/PincodePair.jsx';
+import { CustomerIdentity } from '../../components/domain/CustomerIdentity.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Skeleton } from '../../components/ui/Skeleton.jsx';
 import { DeliverOtpModal } from './DeliverOtpModal.jsx';
@@ -28,6 +29,8 @@ import {
   Check,
   Clock,
   ArrowDown,
+  Phone,
+  User,
 } from 'lucide-react';
 
 export function AgentOrderDetailPage() {
@@ -184,6 +187,55 @@ export function AgentOrderDetailPage() {
           </div>
         )}
 
+        {/* Pickup / Receiver contacts — above Route & Addresses */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-container-lowest hairline rounded-2xl p-4 sm:p-5 shadow-card space-y-2">
+            <div className="label-caps text-[10px] text-ink-variant flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-primary" />
+              <span>Pickup Contact</span>
+            </div>
+            <CustomerIdentity
+              contact={{
+                name: order.pickupContact?.name,
+                phone: order.pickupContact?.phone,
+              }}
+              variant="compact"
+            />
+            {order.pickupContact?.phone ? (
+              <a
+                href={`tel:${order.pickupContact.phone.replace(/\s+/g, '')}`}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Call sender</span>
+              </a>
+            ) : null}
+          </div>
+
+          <div className="bg-container-lowest hairline rounded-2xl p-4 sm:p-5 shadow-card space-y-2">
+            <div className="label-caps text-[10px] text-ink-variant flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-primary" />
+              <span>Deliver To</span>
+            </div>
+            <CustomerIdentity
+              contact={{
+                name: order.dropContact?.name,
+                phone: order.dropContact?.phone,
+              }}
+              variant="compact"
+            />
+            {order.dropContact?.phone ? (
+              <a
+                href={`tel:${order.dropContact.phone.replace(/\s+/g, '')}`}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Call receiver</span>
+              </a>
+            ) : null}
+          </div>
+        </div>
+
         {/* Route & Addresses */}
         <div className="bg-container-lowest hairline rounded-2xl p-4 sm:p-5 shadow-card space-y-4">
           <div className="flex items-center justify-between border-b border-hairline pb-3">
@@ -198,11 +250,15 @@ export function AgentOrderDetailPage() {
               pincode: order.pickup?.pincode,
               address: order.pickup?.address,
               companyName: order.pickupCompanyName,
+              contactName: order.pickupContact?.name,
+              contactPhone: order.pickupContact?.phone,
             }}
             drop={{
               pincode: order.drop?.pincode,
               address: order.drop?.address,
               companyName: order.dropCompanyName,
+              contactName: order.dropContact?.name,
+              contactPhone: order.dropContact?.phone,
             }}
             compact={false}
           />

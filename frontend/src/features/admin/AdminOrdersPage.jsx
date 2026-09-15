@@ -155,7 +155,7 @@ export function AdminOrdersPage() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-variant/50 pointer-events-none" />
               <input
                 type="text"
-                placeholder="Search tracking ID or pincode..."
+                placeholder="Search tracking ID, pincode, or customer email..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full bg-container-low text-xs text-ink placeholder:text-ink-variant/50 rounded pl-9 pr-3 py-2 hairline focus:outline-none focus:bg-container-lowest focus:border-primary transition-colors"
@@ -220,7 +220,7 @@ export function AdminOrdersPage() {
         <div className="bg-container-lowest hairline rounded-lg shadow-card overflow-hidden">
           {isLoading ? (
             <div className="p-6">
-              <TableSkeleton rows={6} cols={6} />
+              <TableSkeleton rows={6} cols={7} />
             </div>
           ) : isError ? (
             <div className="p-12 text-center">
@@ -255,6 +255,7 @@ export function AdminOrdersPage() {
                 <thead>
                   <tr className="bg-surface border-b border-hairline text-ink-variant">
                     <th className="py-3 px-4 sm:px-6 label-caps text-[10px]">Waybill Tracking ID</th>
+                    <th className="py-3 px-4 label-caps text-[10px]">Customer</th>
                     <th className="py-3 px-4 label-caps text-[10px]">Route (Pickup → Drop)</th>
                     <th className="py-3 px-4 label-caps text-[10px]">Delivery Target</th>
                     <th className="py-3 px-4 label-caps text-[10px]">Status</th>
@@ -282,6 +283,16 @@ export function AdminOrdersPage() {
                           </div>
                           <div className="text-[11px] text-ink-variant/70 mt-0.5">
                             {formatDateTime(order.createdAt)}
+                          </div>
+                        </td>
+
+                        {/* Customer (placer email primary, name secondary) */}
+                        <td className="py-4 px-4">
+                          <div className="text-xs font-semibold text-ink truncate max-w-[180px]">
+                            {order.customer?.email || 'N/A'}
+                          </div>
+                          <div className="text-[11px] text-ink-variant/80 truncate max-w-[180px]">
+                            {order.customer?.fullName || order.dropContact?.name || 'N/A'}
                           </div>
                         </td>
 

@@ -123,6 +123,21 @@ const orderSchema = new mongoose.Schema(
       uppercase: true,
     },
 
+    // --- Sender / Receiver contacts (person at each end) ---
+    // Optional at schema level so old orders stay valid; required-ness is
+    // enforced in order.validation.js for NEW orders. Company/GSTIN above
+    // remain B2B-only business details.
+    pickupContactName: { type: String, trim: true, default: null },
+    pickupContactPhone: { type: String, trim: true, default: null },
+    dropContactName: { type: String, trim: true, default: null },
+    dropContactEmail: { type: String, trim: true, lowercase: true, default: null },
+    dropContactPhone: { type: String, trim: true, default: null },
+
+    // --- Denormalized placer info (audit/display; source of truth stays User) ---
+    customerFullName: { type: String, trim: true, default: null },
+    customerEmail: { type: String, trim: true, lowercase: true, default: null },
+    customerPhone: { type: String, trim: true, default: null },
+
     pricing: {
       volumetricWeightKg: { type: Number, required: true, min: 0 },
       billableWeightKg: { type: Number, required: true, min: 0 },

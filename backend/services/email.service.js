@@ -120,10 +120,12 @@ export function sendReturnToOriginEmail({ timeline }) {
   });
 }
 
-export function sendDeliveryOtpEmail({ timeline, otp, expiresAt }) {
-  const tpl = deliveryOtpEmail({ timeline, otp, expiresAt });
+export function sendDeliveryOtpEmail({ timeline, otp, expiresAt, order = null }) {
+  const toEmail = order?.dropContactEmail || timeline.customerEmail;
+  const recipientName = order?.dropContactName || null;
+  const tpl = deliveryOtpEmail({ timeline, otp, expiresAt, recipientName, toEmail });
   return sendEmail({
-    to: timeline.customerEmail,
+    to: toEmail,
     subject: tpl.subject,
     html: tpl.html,
     idempotencyKey: `delivery-otp:${timeline._id}`,

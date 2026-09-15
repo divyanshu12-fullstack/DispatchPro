@@ -355,6 +355,11 @@ export function AdminOverviewPage() {
                   >
                     <td className="py-3.5 px-4 sm:px-6 font-display font-bold text-ink tabular">
                       {order.orderNumber}
+                      {(order.customer?.email || order.dropContact?.email) ? (
+                        <div className="text-[11px] font-normal text-ink-variant truncate max-w-[200px] mt-0.5">
+                          {order.customer?.email || order.dropContact?.email}
+                        </div>
+                      ) : null}
                     </td>
 
                     <td className="py-3.5 px-4">

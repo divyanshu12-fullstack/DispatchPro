@@ -5,3 +5,4 @@ export * from './LifecycleStepper.jsx';
 export * from './PincodePair.jsx';
 export * from './PaymentChooser.jsx';
 export * from './QuoteFormFields.jsx';
+export * from './CustomerIdentity.jsx';

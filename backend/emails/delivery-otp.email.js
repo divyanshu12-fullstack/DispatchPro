@@ -9,10 +9,12 @@ import {
   COLORS,
 } from './email-layout.js';
 
-// Sent when the order enters OUT_FOR_DELIVERY. The customer shares this code
+// Sent when the order enters OUT_FOR_DELIVERY. The receiver shares this code
 // with the delivery agent to confirm handover.
-export function deliveryOtpEmail({ timeline, otp, expiresAt }) {
+export function deliveryOtpEmail({ timeline, otp, expiresAt, recipientName = null, toEmail = null }) {
   const trackingUrl = `${FRONTEND_URL}/app`;
+  const footerEmail = toEmail || timeline.customerEmail;
+  const greetingName = recipientName ? `Hi ${escapeHtml(recipientName)}, your delivery is here` : 'Your package is out for delivery';
 
   return {
     subject: `${otp} is your delivery verification code · ${timeline.orderNumber}`,
@@ -20,7 +22,7 @@ export function deliveryOtpEmail({ timeline, otp, expiresAt }) {
       preheader: `Your shipment ${timeline.orderNumber} is out for delivery. Verification code: ${otp}.`,
       chipLabel: 'Doorstep Verification',
       chipTone: 'gold',
-      title: 'Your package is out for delivery',
+      title: greetingName,
       intro: `Shipment <strong style="color: #121212;">${escapeHtml(timeline.orderNumber)}</strong> is on its way and scheduled for delivery today. To ensure secure handover, please share the 6-digit code below with the delivery agent at your doorstep.`,
       content: `
         <!-- Verification Code Display -->
@@ -54,7 +56,7 @@ export function deliveryOtpEmail({ timeline, otp, expiresAt }) {
         <p style="margin: 20px 0 0 0; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 1.6; color: #747878; text-align: center;">
           DispatchPro representatives will never ask for this code prior to doorstep arrival. Never disclose this code over phone or SMS.
         </p>`,
-      footerEmail: timeline.customerEmail,
+      footerEmail,
     }),
   };
 }

@@ -4,6 +4,7 @@ const EMAIL_RE = /^\S+@\S+\.\S+$/;
 const PINCODE_RE = /^\d{4,8}$/;
 // India GSTIN: 15 chars, fixed pattern. Format check only, not verification.
 const GSTIN_RE = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/;
+const PHONE_RE = /^[\d\s\-+()]{7,20}$/;
 
 function asString(v) {
   return typeof v === 'string' ? v.trim() : '';
@@ -127,6 +128,11 @@ export function validateCreateOrder(body) {
   const dropPincode = asString(body?.dropPincode);
   const dropAddress = asString(body?.dropAddress);
   const customerEmail = asString(body?.customerEmail).toLowerCase();
+  const pickupContactName = asString(body?.pickupContactName);
+  const pickupContactPhone = asString(body?.pickupContactPhone);
+  const dropContactName = asString(body?.dropContactName);
+  const dropContactEmail = asString(body?.dropContactEmail).toLowerCase();
+  const dropContactPhone = asString(body?.dropContactPhone);
   const scheduledDeliveryDateRaw = body?.scheduledDeliveryDate;
   const scheduledDeliveryDate = scheduledDeliveryDateRaw
     ? new Date(scheduledDeliveryDateRaw)
@@ -145,6 +151,20 @@ export function validateCreateOrder(body) {
 
   if (!customerEmail) errors.customerEmail = 'customerEmail is required';
   else if (!EMAIL_RE.test(customerEmail)) errors.customerEmail = 'customerEmail is invalid';
+
+  // Sender / receiver contacts — required for ALL new orders.
+  if (!pickupContactName || pickupContactName.length < 2 || pickupContactName.length > 80) {
+    errors.pickupContactName = 'pickupContactName is required (2–80 chars)';
+  }
+  if (!pickupContactPhone) errors.pickupContactPhone = 'pickupContactPhone is required';
+  else if (!PHONE_RE.test(pickupContactPhone)) errors.pickupContactPhone = 'pickupContactPhone format is invalid';
+  if (!dropContactName || dropContactName.length < 2 || dropContactName.length > 80) {
+    errors.dropContactName = 'dropContactName is required (2–80 chars)';
+  }
+  if (!dropContactEmail) errors.dropContactEmail = 'dropContactEmail is required';
+  else if (!EMAIL_RE.test(dropContactEmail)) errors.dropContactEmail = 'dropContactEmail is invalid';
+  if (!dropContactPhone) errors.dropContactPhone = 'dropContactPhone is required';
+  else if (!PHONE_RE.test(dropContactPhone)) errors.dropContactPhone = 'dropContactPhone format is invalid';
 
   if (!scheduledDeliveryDate || Number.isNaN(scheduledDeliveryDate.getTime())) {
     errors.scheduledDeliveryDate = 'scheduledDeliveryDate is required (ISO date string)';
@@ -187,6 +207,11 @@ export function validateCreateOrder(body) {
     dropPincode: pin.dropPincode,
     dropAddress,
     customerEmail,
+    pickupContactName,
+    pickupContactPhone,
+    dropContactName,
+    dropContactEmail,
+    dropContactPhone,
     scheduledDeliveryDate,
     parcel: { actualWeightKg, dimensions: dim.dimensions },
     isCOD,

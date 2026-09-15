@@ -5,8 +5,8 @@ import { MapPin } from 'lucide-react';
  * Line-and-pin Address Visual for Waybills and Order Cards.
  *
  * @param {object} props
- * @param {{ pincode: string, address?: string, zoneName?: string, companyName?: string }} props.pickup
- * @param {{ pincode: string, address?: string, zoneName?: string, companyName?: string }} props.drop
+ * @param {{ pincode: string, address?: string, zoneName?: string, companyName?: string, contactName?: string, contactPhone?: string }} props.pickup
+ * @param {{ pincode: string, address?: string, zoneName?: string, companyName?: string, contactName?: string, contactPhone?: string }} props.drop
  * @param {boolean} [props.compact=false]
  * @param {string} [props.className='']
  */
@@ -42,6 +42,12 @@ export function PincodePair({
           {pickup.companyName && (
             <div className="font-semibold text-ink text-xs mt-0.5">{pickup.companyName}</div>
           )}
+          {pickup.contactName && (
+            <div className="text-ink-variant text-[11px] mt-0.5">
+              {pickup.contactName}
+              {pickup.contactPhone ? ` · ${pickup.contactPhone}` : ''}
+            </div>
+          )}
           {!compact && pickup.address && (
             <div className="text-ink-variant/80 text-[11px] mt-0.5 leading-tight line-clamp-2">
               {pickup.address}
@@ -70,6 +76,12 @@ export function PincodePair({
           </div>
           {drop.companyName && (
             <div className="font-semibold text-ink text-xs mt-0.5">{drop.companyName}</div>
+          )}
+          {drop.contactName && (
+            <div className="text-ink-variant text-[11px] mt-0.5">
+              {drop.contactName}
+              {drop.contactPhone ? ` · ${drop.contactPhone}` : ''}
+            </div>
           )}
           {!compact && drop.address && (
             <div className="text-ink-variant/80 text-[11px] mt-0.5 leading-tight line-clamp-2">

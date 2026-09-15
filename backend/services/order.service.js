@@ -12,7 +12,9 @@ import { sendOrderStatusEmail } from './email.service.js';
 export async function createOrder({ caller, input }) {
   const { orderType, pickupPincode, dropPincode, pickupAddress, dropAddress,
     customerEmail, scheduledDeliveryDate, parcel, isCOD, declaredValue,
-    pickupCompanyName, pickupGstin, dropCompanyName, dropGstin } = input;
+    pickupCompanyName, pickupGstin, dropCompanyName, dropGstin,
+    pickupContactName, pickupContactPhone, dropContactName, dropContactEmail,
+    dropContactPhone } = input;
 
   // Resolve customer: CUSTOMER creates for self; ADMIN can place on behalf via email.
   let customer;
@@ -62,6 +64,14 @@ export async function createOrder({ caller, input }) {
     pickupGstin: orderType === 'B2B' ? pickupGstin : null,
     dropCompanyName: orderType === 'B2B' ? dropCompanyName : null,
     dropGstin: orderType === 'B2B' ? dropGstin : null,
+    pickupContactName,
+    pickupContactPhone,
+    dropContactName,
+    dropContactEmail,
+    dropContactPhone,
+    customerFullName: customer.fullName ?? null,
+    customerEmail: customer.email ?? null,
+    customerPhone: customer.phone ?? null,
     pricing,
     currentStatus: ORDER_STATUS.CREATED,
     scheduledDeliveryDate,
@@ -202,6 +212,11 @@ export async function listOrdersForUser({ caller, query = {} }) {
         { dropPincode: searchRegex },
         { pickupAddress: searchRegex },
         { dropAddress: searchRegex },
+        { customerEmail: searchRegex },
+        { customerFullName: searchRegex },
+        { pickupContactName: searchRegex },
+        { dropContactName: searchRegex },
+        { dropContactEmail: searchRegex },
       ];
     }
   }

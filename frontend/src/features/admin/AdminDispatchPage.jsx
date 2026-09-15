@@ -202,6 +202,11 @@ export function AdminDispatchPage() {
                           <div className="text-[11px] text-ink-variant/70 mt-0.5">
                             Booked {formatDateTime(order.createdAt)}
                           </div>
+                          {order.dropContact?.name ? (
+                            <div className="text-[11px] text-ink font-medium mt-0.5 truncate max-w-[180px]">
+                              → {order.dropContact.name}
+                            </div>
+                          ) : null}
                         </td>
 
                         {/* Route */}
