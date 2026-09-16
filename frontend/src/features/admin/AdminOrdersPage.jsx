@@ -9,7 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState.jsx';
 import { Pagination } from '../../components/ui/Pagination.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { formatCurrency, formatDate, formatDateTime } from '../../lib/format.js';
-import { ORDER_STATUS } from '../../lib/constants.js';
+import { ORDER_STATUS, PAYMENT_STATUS_META } from '../../lib/constants.js';
 import { getErrorMessage } from '../../lib/errors.js';
 import { RescheduleModal } from '../customer/RescheduleModal.jsx';
 import {
@@ -45,6 +45,19 @@ const EXCEPTION_FILTERS = [
   { label: 'RTO-bound', value: 'RTO_BOUND' },
   { label: 'Needs Attention', value: 'NEEDS_ATTENTION' },
 ];
+
+function paymentBadgeClass(order) {
+  if (order.isCOD) return 'bg-container-low text-ink-variant';
+  const meta = order.paymentStatus ? PAYMENT_STATUS_META[order.paymentStatus] : null;
+  return meta ? meta.badgeClass : 'bg-container-low text-ink-variant';
+}
+
+function paymentBadgeLabel(order) {
+  if (order.isCOD) return 'COD';
+  const meta = order.paymentStatus ? PAYMENT_STATUS_META[order.paymentStatus] : null;
+  if (meta) return meta.label.replace('Payment ', '');
+  return 'Prepaid';
+}
 
 export function AdminOrdersPage() {
   const navigate = useNavigate();
@@ -220,7 +233,7 @@ export function AdminOrdersPage() {
         <div className="bg-container-lowest hairline rounded-lg shadow-card overflow-hidden">
           {isLoading ? (
             <div className="p-6">
-              <TableSkeleton rows={6} cols={7} />
+              <TableSkeleton rows={6} cols={8} />
             </div>
           ) : isError ? (
             <div className="p-12 text-center">
@@ -259,6 +272,7 @@ export function AdminOrdersPage() {
                     <th className="py-3 px-4 label-caps text-[10px]">Route (Pickup → Drop)</th>
                     <th className="py-3 px-4 label-caps text-[10px]">Delivery Target</th>
                     <th className="py-3 px-4 label-caps text-[10px]">Status</th>
+                    <th className="py-3 px-4 label-caps text-[10px]">Payment</th>
                     <th className="py-3 px-4 label-caps text-[10px] text-right">Freight</th>
                     <th className="py-3 px-4 sm:px-6 text-right label-caps text-[10px]">Action</th>
                   </tr>
@@ -325,6 +339,13 @@ export function AdminOrdersPage() {
                         {/* Status */}
                         <td className="py-4 px-4">
                           <StatusChip status={order.currentStatus} />
+                        </td>
+
+                        {/* Payment */}
+                        <td className="py-4 px-4">
+                          <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${paymentBadgeClass(order)}`}>
+                            {paymentBadgeLabel(order)}
+                          </span>
                         </td>
 
                         {/* Amount */}

@@ -5,8 +5,7 @@ import { Banknote, CreditCard, ShieldCheck } from 'lucide-react';
 /**
  * Payment Chooser Component.
  *
- * Supports COD as the active payment method and renders a disabled Prepaid card
- * with "Razorpay Integration Coming Soon" badge per specification.
+ * Supports COD and Prepaid (Razorpay test mode) as selectable methods.
  *
  * @param {object} props
  * @param {boolean} props.isCOD - Whether COD is selected
@@ -59,24 +58,31 @@ export function PaymentChooser({
           </div>
         </div>
 
-        {/* Prepaid / Razorpay (Disabled with "Razorpay Integration Coming Soon") */}
-        <div className="p-5 rounded-lg hairline bg-container-low/60 opacity-80 cursor-not-allowed flex flex-col justify-between relative overflow-hidden">
+        {/* Prepaid / Razorpay (Test Mode) */}
+        <div
+          onClick={() => onChange?.(false)}
+          className={`p-5 rounded-lg hairline cursor-pointer transition-all flex flex-col justify-between ${
+            !isCOD
+              ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-card'
+              : 'bg-container-low hover:bg-container'
+          }`}
+        >
           <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="w-8 h-8 rounded bg-container-high flex items-center justify-center text-ink-variant/60">
+            <div className="w-8 h-8 rounded bg-container-low flex items-center justify-center text-primary">
               <CreditCard className="w-4 h-4" />
             </div>
 
             <span className="px-2 py-0.5 rounded bg-container-high text-ink-variant text-[10px] font-bold">
-              Razorpay Integration Coming Soon
+              Razorpay Test Mode
             </span>
           </div>
 
           <div>
-            <div className="font-display font-bold text-sm text-ink-variant mb-1 flex items-center gap-1.5">
+            <div className="font-display font-bold text-sm text-ink mb-1 flex items-center gap-1.5">
               <span>Prepaid (UPI / Cards / NetBanking)</span>
             </div>
-            <p className="text-xs text-ink-variant/70 leading-relaxed">
-              Instant online payment gateway via Razorpay is under integration.
+            <p className="text-xs text-ink-variant leading-relaxed">
+              Pay upfront online. No real money is charged in test mode.
             </p>
           </div>
 

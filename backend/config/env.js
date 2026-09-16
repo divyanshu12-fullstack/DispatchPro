@@ -23,4 +23,9 @@ export const APP_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Kolkata';
 export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@dispatchpro.com';
 export const APP_NAME = 'DispatchPro';
 
+// Razorpay (test mode, prepaid). Empty-string defaults — server must start
+// without them so COD still works. Endpoints return 422 when unconfigured.
+export const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
+export const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
+
 

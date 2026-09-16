@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '../../api/orders.api.js';
+import { paymentsApi } from '../../api/payments.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
+import { useToast } from '../../components/ui/Toast.jsx';
 import { WaybillHeader } from '../../components/domain/WaybillHeader.jsx';
 import { LifecycleStepper } from '../../components/domain/LifecycleStepper.jsx';
 import { PincodePair } from '../../components/domain/PincodePair.jsx';
@@ -13,7 +15,9 @@ import { Button } from '../../components/ui/Button.jsx';
 import { Skeleton } from '../../components/ui/Skeleton.jsx';
 import { RescheduleModal } from './RescheduleModal.jsx';
 import { formatDateTime, formatWeight, formatDimensions, formatCurrency } from '../../lib/format.js';
-import { ORDER_STATUS } from '../../lib/constants.js';
+import { ORDER_STATUS, PAYMENT_STATUS } from '../../lib/constants.js';
+import { openRazorpayCheckout } from '../../lib/razorpay.js';
+import { getErrorMessage } from '../../lib/errors.js';
 import {
   ArrowLeft,
   RefreshCw,
@@ -26,12 +30,15 @@ import {
   Box,
   ArrowDown,
   Users,
+  CreditCard,
 } from 'lucide-react';
 
 export function OrderDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const toast = useToast();
   const [isRescheduleOpen, setIsRescheduleOpen] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
   // Fetch Order
   const {
@@ -61,6 +68,47 @@ export function OrderDetailPage() {
   const handleRefreshAll = () => {
     refetchOrder();
     refetchTimeline();
+  };
+
+  const handleCompletePayment = async () => {
+    if (!order?.id) return;
+    setIsPaying(true);
+    try {
+      const init = await paymentsApi.createRazorpayOrder(order.id);
+      const resp = await openRazorpayCheckout({
+        keyId: init.keyId,
+        amount: init.amount,
+        currency: init.currency,
+        razorpayOrderId: init.razorpayOrderId,
+        orderNumber: order.orderNumber,
+        // Payer is the sender (order placer), NOT the receiver — the
+        // receiver only gets the delivery OTP email.
+        prefill: {
+          name: order.pickupContact?.name || order.customer?.fullName || '',
+          email: order.customer?.email || user?.email || '',
+          contact: order.pickupContact?.phone || '',
+        },
+        notes: { orderNumber: order.orderNumber },
+      });
+      await paymentsApi.verifyPayment(order.id, {
+        razorpayOrderId: resp.razorpay_order_id,
+        razorpayPaymentId: resp.razorpay_payment_id,
+        razorpaySignature: resp.razorpay_signature,
+      });
+      toast.success('Payment received! Your shipment is queued for dispatch.');
+      handleRefreshAll();
+    } catch (err) {
+      if (err?.dismissed) {
+        toast.error('Payment window closed — order is still pending payment.');
+      } else if (err?.failed) {
+        toast.error('Payment failed — please retry.');
+        handleRefreshAll();
+      } else {
+        toast.error(getErrorMessage(err, 'Could not start payment.'));
+      }
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   if (isOrderLoading) {
@@ -101,6 +149,11 @@ export function OrderDetailPage() {
   const isFailed = order.currentStatus === ORDER_STATUS.FAILED;
   const isOutForDelivery = order.currentStatus === ORDER_STATUS.OUT_FOR_DELIVERY;
   const showParties = user?.role !== 'CUSTOMER';
+  const needsPayment =
+    !order.isCOD &&
+    order.paymentStatus !== PAYMENT_STATUS.PAID &&
+    order.currentStatus === ORDER_STATUS.CREATED &&
+    user?.role !== 'AGENT';
 
   return (
     <div className="min-h-screen bg-surface py-8 sm:py-10">
@@ -138,6 +191,36 @@ export function OrderDetailPage() {
           currentStatus={order.currentStatus}
           lastFailureReason={order.lastFailureReason}
         />
+
+        {/* 2b. Pending-payment banner (prepaid, CREATED, unpaid) */}
+        {needsPayment && (
+          <div className="bg-warning-soft/60 hairline rounded-lg p-5 shadow-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-warning-soft text-warning flex items-center justify-center shrink-0 mt-0.5">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-display font-bold text-sm text-ink">
+                  Payment Pending — {formatCurrency(order.pricing?.totalAmount)}
+                </div>
+                <p className="text-xs text-ink-variant mt-0.5 leading-relaxed max-w-lg">
+                  This prepaid shipment is saved but will not be dispatched until payment completes (test mode, no real money).
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              size="md"
+              leftIcon={<CreditCard className="w-3.5 h-3.5" />}
+              onClick={handleCompletePayment}
+              isLoading={isPaying}
+              className="shrink-0"
+            >
+              Complete Payment
+            </Button>
+          </div>
+        )}
 
         {/* 3. Out For Delivery OTP Alert Banner */}
         {isOutForDelivery && (
@@ -264,15 +347,7 @@ export function OrderDetailPage() {
                   <Users className="w-3.5 h-3.5 text-primary" />
                   <span>Parties</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <CustomerIdentity
-                    label="Customer (Placer)"
-                    contact={{
-                      name: order.customer?.fullName,
-                      email: order.customer?.email,
-                      phone: order.customer?.phone,
-                    }}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <CustomerIdentity
                     label="Sender (Pickup)"
                     contact={{

@@ -72,6 +72,11 @@ export async function createOrder({ caller, input }) {
     customerFullName: customer.fullName ?? null,
     customerEmail: customer.email ?? null,
     customerPhone: customer.phone ?? null,
+    // Prepaid orders start unpaid; COD orders stay null (payment-irrelevant).
+    // Old orders are untouched (null default at schema level).
+    paymentStatus: isCOD ? null : 'PENDING',
+    razorpayOrderId: null,
+    razorpayPaymentId: null,
     pricing,
     currentStatus: ORDER_STATUS.CREATED,
     scheduledDeliveryDate,

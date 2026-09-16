@@ -197,6 +197,18 @@ const orderSchema = new mongoose.Schema(
     // Hashed at rest and selected-out by default (same pattern as login OTP).
     deliveryOtpHash: { type: String, default: null, select: false },
     deliveryOtpExpiresAt: { type: Date, default: null },
+
+    // Prepaid (Razorpay test mode) payment state. Default null so old orders
+    // (all COD in practice) are untouched. Business rule: prepaid
+    // (isCOD: false) orders created after this feature start with 'PENDING';
+    // COD orders stay null (payment-irrelevant).
+    paymentStatus: {
+      type: String,
+      enum: ['PENDING', 'PAID', 'FAILED'],
+      default: null,
+    },
+    razorpayOrderId: { type: String, default: null },
+    razorpayPaymentId: { type: String, default: null },
   },
   {
     timestamps: true,

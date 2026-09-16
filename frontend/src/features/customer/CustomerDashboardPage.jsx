@@ -9,7 +9,7 @@ import { TableSkeleton } from '../../components/ui/Skeleton.jsx';
 import { EmptyState } from '../../components/ui/EmptyState.jsx';
 import { Pagination } from '../../components/ui/Pagination.jsx';
 import { formatCurrency, formatDate } from '../../lib/format.js';
-import { ORDER_STATUS } from '../../lib/constants.js';
+import { ORDER_STATUS, PAYMENT_STATUS, PAYMENT_STATUS_META } from '../../lib/constants.js';
 import {
   PlusCircle,
   Search,
@@ -239,6 +239,18 @@ export function CustomerDashboardPage() {
                       {/* Status */}
                       <td className="py-4 px-4">
                         <StatusChip status={order.currentStatus} />
+                        {!order.isCOD && order.paymentStatus && order.paymentStatus !== PAYMENT_STATUS.PAID && (
+                          <div className="mt-1.5">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${PAYMENT_STATUS_META[order.paymentStatus]?.badgeClass || 'bg-container-low text-ink-variant'}`}>
+                              {PAYMENT_STATUS_META[order.paymentStatus]?.label || order.paymentStatus}
+                            </span>
+                            {order.currentStatus === ORDER_STATUS.CREATED && (
+                              <div className="text-[10px] font-semibold text-primary mt-0.5">
+                                Open to complete payment →
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Amount */}

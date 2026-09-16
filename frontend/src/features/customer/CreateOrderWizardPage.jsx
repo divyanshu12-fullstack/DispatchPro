@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { ordersApi } from '../../api/orders.api.js';
+import { paymentsApi } from '../../api/payments.api.js';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { PriceBreakdown } from '../../components/domain/PriceBreakdown.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Input } from '../../components/ui/Input.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { formatCurrency, formatDate } from '../../lib/format.js';
-import { ORDER_TYPES, GSTIN_REGEX } from '../../lib/constants.js';
+import { ORDER_TYPES, GSTIN_REGEX, PAYMENT_STATUS } from '../../lib/constants.js';
+import { openRazorpayCheckout } from '../../lib/razorpay.js';
 import { getErrorMessage } from '../../lib/errors.js';
 import {
   MapPin,
@@ -114,6 +116,9 @@ export function CreateOrderWizardPage() {
   // Success state on creation
   const [createdOrder, setCreatedOrder] = useState(null);
   const [copied, setCopied] = useState(false);
+  // Prepaid checkout state: null (COD / not started) | 'PENDING' | 'PAID'
+  const [paymentState, setPaymentState] = useState(null);
+  const [isPaying, setIsPaying] = useState(false);
 
   const tomorrowStr = getTomorrowDateString();
 
@@ -381,8 +386,61 @@ export function CreateOrderWizardPage() {
       }
 
       const order = await ordersApi.createOrder(payload);
-      setCreatedOrder(order);
-      toast.success(`Shipment ${order.orderNumber} created successfully!`);
+
+      // COD path unchanged — done.
+      if (payload.isCOD) {
+        setPaymentState(null);
+        setCreatedOrder(order);
+        toast.success(`Shipment ${order.orderNumber} created successfully!`);
+        return;
+      }
+
+      // Prepaid path: create-order-first, then Razorpay checkout right away.
+      // The order already exists as PENDING; unpaid orders are never assigned.
+      setIsPaying(true);
+      try {
+        const init = await paymentsApi.createRazorpayOrder(order.id);
+        const resp = await openRazorpayCheckout({
+          keyId: init.keyId,
+          amount: init.amount,
+          currency: init.currency,
+          razorpayOrderId: init.razorpayOrderId,
+          orderNumber: order.orderNumber,
+          // Payer is the sender (order placer), NOT the receiver — the
+          // receiver only gets the delivery OTP email.
+          prefill: {
+            name: formData.pickupContactName?.trim(),
+            email: user?.email?.trim() || '',
+            contact: formData.pickupContactPhone?.trim(),
+          },
+          notes: { orderNumber: order.orderNumber },
+        });
+
+        await paymentsApi.verifyPayment(order.id, {
+          razorpayOrderId: resp.razorpay_order_id,
+          razorpayPaymentId: resp.razorpay_payment_id,
+          razorpaySignature: resp.razorpay_signature,
+        });
+
+        const paidOrder = await ordersApi.getOrder(order.id);
+        setPaymentState(PAYMENT_STATUS.PAID);
+        setCreatedOrder(paidOrder);
+        toast.success(`Payment received! Shipment ${order.orderNumber} is queued for dispatch.`);
+      } catch (payErr) {
+        // Order still exists as PENDING — user can complete payment later
+        // from the order detail page.
+        setPaymentState(PAYMENT_STATUS.PENDING);
+        setCreatedOrder(order);
+        if (payErr?.dismissed) {
+          toast.error('Payment window closed — order is saved. Complete payment from the order page.');
+        } else if (payErr?.failed) {
+          toast.error('Payment failed — order is saved. Retry payment from the order page.');
+        } else {
+          toast.error(getErrorMessage(payErr, 'Order created, but payment could not start. Pay from the order page.'));
+        }
+      } finally {
+        setIsPaying(false);
+      }
     } catch (err) {
       if (err.details && Object.keys(err.details).length > 0) {
         setFieldErrors(err.details);
@@ -460,6 +518,19 @@ export function CreateOrderWizardPage() {
                 </div>
               </div>
             </div>
+
+            {/* Prepaid payment outcome */}
+            {!createdOrder.isCOD && paymentState === PAYMENT_STATUS.PAID && (
+              <div className="p-4 bg-success-soft/50 hairline border-success/30 rounded-xl text-xs font-semibold text-success">
+                Payment received (test mode) — your shipment is queued for dispatch.
+              </div>
+            )}
+            {!createdOrder.isCOD && paymentState === PAYMENT_STATUS.PENDING && (
+              <div className="p-4 bg-warning-soft/60 hairline rounded-xl text-xs text-ink leading-relaxed">
+                <span className="font-bold">Payment pending.</span> Your order is saved but will not be
+                dispatched until payment completes. Use “Track Shipment Now” to finish paying.
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-hairline">
@@ -927,32 +998,54 @@ export function CreateOrderWizardPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Prepaid / Razorpay Option (Disabled & Unselectable) */}
+                  {/* Prepaid / Razorpay Option (Test Mode) */}
                   <div
-                    className="p-4 rounded-xl hairline bg-container-low/50 opacity-75 cursor-not-allowed flex items-start gap-3 select-none relative"
-                    title="Prepaid Razorpay integration is coming soon"
+                    onClick={() => handleFieldChange('isCOD', false)}
+                    className={`p-4 rounded-xl hairline cursor-pointer transition-all flex items-start gap-3 ${
+                      !formData.isCOD
+                        ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
+                        : 'bg-container-low hover:bg-container'
+                    }`}
                   >
-                    <div className="w-4 h-4 rounded-full border border-outline bg-container-high flex items-center justify-center mt-0.5 shrink-0" />
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                        !formData.isCOD
+                          ? 'border-primary bg-primary text-on-primary'
+                          : 'border-outline bg-container-lowest'
+                      }`}
+                    >
+                      {!formData.isCOD && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-xs text-ink-variant">Prepaid / Non-COD</span>
+                        <span className="font-semibold text-xs text-ink">Prepaid / Non-COD</span>
                         <span className="px-2 py-0.5 rounded bg-container-high text-ink-variant text-[9px] font-bold shrink-0">
-                          Razorpay Integration Coming Soon
+                          Razorpay Test Mode
                         </span>
                       </div>
                       <p className="text-[11px] text-ink-variant/70 mt-1">
-                        Amount settled upfront via UPI/Cards (Coming Soon).
+                        Amount settled upfront via UPI/Cards. No real money is charged.
                       </p>
                     </div>
                   </div>
 
-                  {/* Cash on Delivery (COD) Option (Active & Selected) */}
+                  {/* Cash on Delivery (COD) Option */}
                   <div
                     onClick={() => handleFieldChange('isCOD', true)}
-                    className="p-4 rounded-xl hairline bg-container-lowest border-primary ring-1 ring-primary shadow-xs cursor-pointer transition-all flex items-start gap-3"
+                    className={`p-4 rounded-xl hairline cursor-pointer transition-all flex items-start gap-3 ${
+                      formData.isCOD
+                        ? 'bg-container-lowest border-primary ring-1 ring-primary shadow-xs'
+                        : 'bg-container-low hover:bg-container'
+                    }`}
                   >
-                    <div className="w-4 h-4 rounded-full border border-primary bg-primary text-on-primary flex items-center justify-center mt-0.5 shrink-0">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center mt-0.5 shrink-0 ${
+                        formData.isCOD
+                          ? 'border-primary bg-primary text-on-primary'
+                          : 'border-outline bg-container-lowest'
+                      }`}
+                    >
+                      {formData.isCOD && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
@@ -1105,7 +1198,7 @@ export function CreateOrderWizardPage() {
                 isLoading={isSubmitting}
                 rightIcon={<CheckCircle2 className="w-4 h-4" />}
               >
-                Confirm & Book Shipment
+                {formData.isCOD ? 'Confirm & Book Shipment' : isPaying ? 'Waiting for Payment…' : 'Confirm & Pay Now'}
               </Button>
             )}
           </div>

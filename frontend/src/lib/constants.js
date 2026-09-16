@@ -97,3 +97,27 @@ export const ORDER_TYPES = Object.freeze({
   B2C: 'B2C',
   B2B: 'B2B',
 });
+
+export const PAYMENT_STATUS = Object.freeze({
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+});
+
+export const PAYMENT_STATUS_META = Object.freeze({
+  PENDING: {
+    label: 'Payment Pending',
+    badgeClass: 'bg-warning-soft text-warning',
+    description: 'Prepaid order awaiting online payment',
+  },
+  PAID: {
+    label: 'Paid',
+    badgeClass: 'bg-success-soft text-success',
+    description: 'Prepaid payment captured via Razorpay',
+  },
+  FAILED: {
+    label: 'Payment Failed',
+    badgeClass: 'bg-danger-soft text-danger',
+    description: 'Last payment attempt failed — retry checkout',
+  },
+});

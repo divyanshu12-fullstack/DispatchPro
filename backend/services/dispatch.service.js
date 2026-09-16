@@ -56,6 +56,12 @@ export async function attemptAssignment(orderId, actorId = null, actorRole = 'SY
     throw ApiError.conflict(`Order is ${order.currentStatus}, expected CREATED`);
   }
 
+  // Prepaid gating: unpaid prepaid orders are never assigned. Check BEFORE
+  // claiming an agent slot so we don't burn capacity on a blocked order.
+  if (!order.isCOD && order.paymentStatus !== 'PAID') {
+    throw ApiError.conflict('Order is awaiting payment');
+  }
+
   const agent = await claimAgent(order.pickupZoneId);
   if (!agent) return null;
 
@@ -112,6 +118,7 @@ export async function attemptAssignment(orderId, actorId = null, actorRole = 'SY
 
 /**
  * Admin-triggered dispatch. Validates the order and delegates to attemptAssignment.
+ * Unpaid prepaid orders surface a clear 409 via the assignment guard.
  */
 export async function dispatchOrder({ caller, orderId }) {
   const result = await attemptAssignment(orderId, caller.id, caller.role);
@@ -131,6 +138,8 @@ export async function sweepUnassignedOrders() {
     currentStatus: ORDER_STATUS.CREATED,
     assignmentAttempts: { $lt: MAX_ASSIGNMENT_ATTEMPTS },
     needsManualAttention: false,
+    // Prepaid gating: only COD or PAID orders are eligible for assignment.
+    $or: [{ isCOD: true }, { paymentStatus: 'PAID' }],
   }).lean();
 
   for (const order of orders) {
@@ -164,6 +173,8 @@ export async function retryAssignmentForZone(zoneId) {
     currentStatus: ORDER_STATUS.CREATED,
     pickupZoneId: zoneId,
     needsManualAttention: false,
+    // Same prepaid gating as the sweep; attemptAssignment re-checks anyway.
+    $or: [{ isCOD: true }, { paymentStatus: 'PAID' }],
   }).lean();
 
   for (const order of orders) {
