@@ -7,8 +7,6 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-Atlas%20Replica%20Set-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 
-> ⚠️ **Project Status**: The frontend is still under active development, so requests to the deployed API endpoints may occasionally encounter issues. For more reliable testing, please run the API locally and use cURL or Postman.
-
 **DispatchPro** is a full-stack last-mile logistics and courier management platform built with the MERN stack. It features zone-based rate calculation, an order lifecycle state machine with MongoDB transaction audit trails, field courier task execution with 6-digit delivery OTP verification, failed delivery recovery with customer rescheduling, and an operations dashboard for admins.
 
 ---
