@@ -10,6 +10,7 @@ import { LoginPage } from './features/public/LoginPage.jsx';
 import { RegisterPage } from './features/public/RegisterPage.jsx';
 import { VerifyPage } from './features/public/VerifyPage.jsx';
 import { QuoteCalculatorPage } from './features/public/QuoteCalculatorPage.jsx';
+import { FaqPage } from './features/public/FaqPage.jsx';
 
 import { CustomerDashboardPage } from './features/customer/CustomerDashboardPage.jsx';
 import { CreateOrderWizardPage } from './features/customer/CreateOrderWizardPage.jsx';
@@ -79,6 +80,7 @@ export default function App() {
               <Route element={<Layout />}>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/quote" element={<QuoteCalculatorPage />} />
+                <Route path="/faq" element={<FaqPage />} />
 
                 {/* Auth Pages (Redirect if already logged in) */}
                 <Route
