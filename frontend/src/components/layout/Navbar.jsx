@@ -294,6 +294,9 @@ export function Navbar() {
           ) : (
             /* Unauthenticated Visitor Options */
             <div className="flex items-center gap-2">
+              <Link to="/faq" className="hidden sm:inline-flex">
+                <Button variant="secondary" size="sm">FAQ</Button>
+              </Link>
               <Link to="/quote">
                 <Button variant="secondary" size="sm" leftIcon={<Calculator className="w-3.5 h-3.5" />}>
                   Rate Calculator

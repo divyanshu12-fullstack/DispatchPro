@@ -213,6 +213,9 @@ export function LandingPage() {
           </div>
 
           <div className="flex items-center gap-6 text-xs text-ink-variant">
+            <Link to="/faq" className="hover:text-ink transition-colors">
+              FAQ
+            </Link>
             <Link to="/quote" className="hover:text-ink transition-colors">
               Rate Calculator
             </Link>
