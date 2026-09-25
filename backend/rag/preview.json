@@ -1,0 +1,57 @@
+[
+  {
+    "source": "faq.md",
+    "sourceId": "faqmd-b2b376ce",
+    "title": "How is my delivery price calculated?",
+    "category": "pricing",
+    "text": "How is my delivery price calculated?\n\nDispatchPro calculates price fairly. Think of your box two ways: real weight on a scale, and space it takes. Space weight = (Length cm x Breadth cm x Height cm) / 5000. Billable weight = whichever is bigger — real weight or space weight.\n\nPrice = Base Rate (covers first 0.5 kg for B2C, 1 kg for B2B) + Extra per-kg charge for weight above that + COD charge if you choose Cash on Delivery.\n\nWe have 4 price lists: B2C inside same zone, B2C across zones, B2B inside same zone, B2B across zones. Inside same zone is cheaper. Your exact breakdown is saved with your order so it never changes later. Check price for free on /quote with no login.\n\nExample: B2C, 1.5 kg real, box 20x15x10, inside Gurugram (INTRA_ZONE), base 0.5 kg / Rs 40, per-kg Rs 15 → space 0.6 kg, billable 1.5 kg, extra 1.0 kg = Rs 15, total Rs 55 prepaid. Add COD fixed 30 + 1.5% of declared value if COD.",
+    "hash": "b2b376ce2afbb31d8908039876fa448881e13e3e",
+    "trusted": true,
+    "boost": 2,
+    "version": "v1"
+  },
+  {
+    "source": "faq.md",
+    "sourceId": "faqmd-4bd7a8f4",
+    "title": "How do I book a parcel and how does payment work?",
+    "category": "booking",
+    "text": "How do I book a parcel and how does payment work?\n\nBooking is 3 steps: (1) Pickup and drop — pincodes, full addresses, contact name/phone for sender and receiver. For B2B also company name + GSTIN. (2) Parcel details — real weight, box size, B2C/B2B, COD or Prepaid, declared value for COD. (3) Date — pick scheduled delivery date, review live price, submit. You get tracking number like LM-2026-000001.\n\nWe serve only Delhi-NCR: 6 zones (Delhi Central, Gurugram-Faridabad, Noida-Ghaziabad, Outer NCR Haryana, Outer NCR Rajasthan, Outer NCR UP) — 726 pincodes. If pincode is not in our list, you will see \"not serviceable\".\n\nPayment: COD = receiver pays cash at door, no online payment. Prepaid = you pay online via Razorpay right after booking. Prepaid starts as PENDING and only gets a courier after PAID. Unpaid prepaid is never assigned.",
+    "hash": "4bd7a8f42577e7127a387e9721890d6c075b0463",
+    "trusted": true,
+    "boost": 2,
+    "version": "v1"
+  },
+  {
+    "source": "faq.md",
+    "sourceId": "faqmd-069e4442",
+    "title": "How do I track my parcel and what is OTP delivery?",
+    "category": "tracking",
+    "text": "How do I track my parcel and what is OTP delivery?\n\nEvery order follows: CREATED -> ASSIGNED -> PICKED_UP -> IN_TRANSIT -> OUT_FOR_DELIVERY -> DELIVERED or FAILED or RETURN_TO_ORIGIN. Track on /app/orders/:id with stepper and history.\n\nWhen parcel goes OUT_FOR_DELIVERY, we generate a 6-digit code and email it to the receiver (drop contact email). Courier must enter that exact code to mark DELIVERED. No code, no delivery. Code is hashed, expires in 24 hours, one-time use only. If you lost email, check spam or open order detail page.\n\nOnly the assigned courier or admin can move statuses, and steps must be in order.",
+    "hash": "069e4442a3a0aeb287faf4b2b3091fce13560f33",
+    "trusted": true,
+    "boost": 2,
+    "version": "v1"
+  },
+  {
+    "source": "faq.md",
+    "sourceId": "faqmd-ae1e5d7b",
+    "title": "What if delivery fails? Can I reschedule? What is RTO?",
+    "category": "failure",
+    "text": "What if delivery fails? Can I reschedule? What is RTO?\n\nIf handover fails, courier must choose: Customer Unavailable, Incorrect Address, Customer Refused, Package Damaged.\n\nOnly Customer Unavailable can be rescheduled. Other 3 go directly to RETURN_TO_ORIGIN (RTO) — parcel returns to sender.\n\nIf Customer Unavailable: order becomes FAILED. You (or admin) can pick a new future date on reschedule page. This resets order to CREATED, clears old courier, re-queues it, but remembers the failure count. You get one reschedule. If you miss again (second failure), next failure goes to RTO — no more rescheduling. Max 2 failed attempts. You get email each time.",
+    "hash": "ae1e5d7b556bede6f109e411477fce9c301d91ba",
+    "trusted": true,
+    "boost": 2,
+    "version": "v1"
+  },
+  {
+    "source": "faq.md",
+    "sourceId": "faqmd-f6fafbae",
+    "title": "How does courier assignment work? Why is my order still CREATED?",
+    "category": "assignment",
+    "text": "How does courier assignment work? Why is my order still CREATED?\n\nWe pick the least-loaded available courier in your pickup zone — the person with fewest active parcels, who is Available and not at max capacity. Assignment happens via admin Dispatch click, instant retry after prepaid payment, or automatic sweep every 5 minutes.\n\nIf no courier is free, order stays CREATED and sweep retries up to 3 times. After 3 tries, it is marked \"needs manual attention\" for admin on /admin/dispatch. Prepaid PENDING orders are never assigned until PAID.\n\nWho can do what: Customer sees own orders and can reschedule FAILED. Courier sees assigned orders and moves them step by step. Admin sees everything, creates couriers, toggles availability, dispatches, and edits price cards.",
+    "hash": "f6fafbae98e999601974a5ccc89505468347b623",
+    "trusted": true,
+    "boost": 2,
+    "version": "v1"
+  }
+]

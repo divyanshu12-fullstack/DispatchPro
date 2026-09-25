@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button.jsx';
 import { Skeleton } from '../../components/ui/Skeleton.jsx';
 import { formatCurrency, formatDateTime } from '../../lib/format.js';
 import { ORDER_STATUS } from '../../lib/constants.js';
+import { OpsCopilotPanel } from '../support/OpsCopilotPanel.jsx';
 import {
   Compass,
   Users,
@@ -317,6 +318,9 @@ export function AdminOverviewPage() {
             </Link>
           </div>
         </div>
+
+        {/* Ops Copilot — Admin read-only, faq.md + live counts */}
+        <OpsCopilotPanel />
 
         {/* Live Recent Activity Stream Table */}
         <div className="bg-container-lowest hairline rounded-lg shadow-card overflow-hidden">

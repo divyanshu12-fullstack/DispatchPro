@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.routes.js';
 import orderRoutes from './routes/order.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import aiRoutes from './rag/routes/ai.routes.js';
 import { errorMiddleware } from './middleware/error.middleware.js';
 import { ApiError } from './utils/ApiError.js';
 
@@ -52,6 +53,7 @@ export function createApp() {
   app.use('/api/orders', orderRoutes);
   app.use('/api/payments', paymentRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/ai', aiRoutes);
 
   app.use((req, _res, next) => {
     next(ApiError.notFound(`Route not found: ${req.method} ${req.originalUrl}`));

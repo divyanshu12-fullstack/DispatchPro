@@ -1,7 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router';
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './auth/AuthContext.jsx';
+import { AuthProvider, useAuth } from './auth/AuthContext.jsx';
 import { RequireRole, RedirectIfAuthed } from './auth/guards.jsx';
 import { ToastProvider } from './components/ui/Toast.jsx';
 
@@ -25,6 +25,8 @@ import { AdminOrdersPage } from './features/admin/AdminOrdersPage.jsx';
 import { AdminDispatchPage } from './features/admin/AdminDispatchPage.jsx';
 import { AdminAgentsPage } from './features/admin/AdminAgentsPage.jsx';
 import { AdminRatesPage } from './features/admin/AdminRatesPage.jsx';
+import { AdminOpsPage } from './features/admin/AdminOpsPage.jsx';
+import { SupportChat } from './features/support/SupportChat.jsx';
 
 import { Navbar } from './components/layout/Navbar.jsx';
 
@@ -45,8 +47,18 @@ function Layout() {
       <main className="flex-1 flex flex-col">
         <Outlet />
       </main>
+      <SupportChatHost />
     </div>
   );
+}
+
+function SupportChatHost() {
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+  if (!isAuthenticated || !user) return null;
+  if (user.role === 'AGENT') return null;
+  if (!location.pathname.startsWith('/app')) return null;
+  return <SupportChat />;
 }
 
 // Temporary Placeholder Shell
@@ -139,6 +151,7 @@ export default function App() {
                   }
                 >
                   <Route index element={<AdminOverviewPage />} />
+                  <Route path="ops" element={<AdminOpsPage />} />
                   <Route path="orders" element={<AdminOrdersPage />} />
                   <Route path="dispatch" element={<AdminDispatchPage />} />
                   <Route path="agents" element={<AdminAgentsPage />} />

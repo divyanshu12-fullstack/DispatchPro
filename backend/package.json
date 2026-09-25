@@ -11,7 +11,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "rag:ingest": "node rag/scripts/ingestFaqMd.js",
+    "rag:ingest:dry": "node rag/scripts/ingestFaqMd.js --dry",
+    "rag:ingest:noembed": "node rag/scripts/ingestFaqMd.js --no-embed",
+    "rag:index:create": "node rag/scripts/createVectorIndex.js",
+    "rag:index:check": "node -e \"import('dotenv/config').then(async()=>{const m=await import('mongoose'); await m.default.connect(process.env.MONGO_URI); const c=m.default.connection.db.collection('kbchunks'); const cur=await c.listSearchIndexes(); console.log(JSON.stringify(await cur.toArray(),null,2)); await m.default.disconnect();})\""
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

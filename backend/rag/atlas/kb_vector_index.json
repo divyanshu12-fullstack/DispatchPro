@@ -1,0 +1,28 @@
+{
+  "name": "kb_vector_index",
+  "type": "vectorSearch",
+  "collectionName": "kbchunks",
+  "databaseName": "test",
+  "definition": {
+    "fields": [
+      {
+        "type": "vector",
+        "path": "embedding",
+        "numDimensions": 4096,
+        "similarity": "cosine"
+      },
+      {
+        "type": "filter",
+        "path": "category"
+      },
+      {
+        "type": "filter",
+        "path": "trusted"
+      },
+      {
+        "type": "filter",
+        "path": "source"
+      }
+    ]
+  }
+}
