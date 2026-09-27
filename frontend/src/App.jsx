@@ -27,6 +27,7 @@ import { AdminAgentsPage } from './features/admin/AdminAgentsPage.jsx';
 import { AdminRatesPage } from './features/admin/AdminRatesPage.jsx';
 import { AdminOpsPage } from './features/admin/AdminOpsPage.jsx';
 import { SupportChat } from './features/support/SupportChat.jsx';
+import { OpsChat } from './features/support/OpsChat.jsx';
 
 import { Navbar } from './components/layout/Navbar.jsx';
 
@@ -57,8 +58,9 @@ function SupportChatHost() {
   const location = useLocation();
   if (!isAuthenticated || !user) return null;
   if (user.role === 'AGENT') return null;
-  if (!location.pathname.startsWith('/app')) return null;
-  return <SupportChat />;
+  if (location.pathname.startsWith('/admin')) return <OpsChat />;
+  if (location.pathname.startsWith('/app')) return <SupportChat />;
+  return null;
 }
 
 // Temporary Placeholder Shell

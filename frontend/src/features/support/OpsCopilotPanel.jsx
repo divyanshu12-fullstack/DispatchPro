@@ -2,13 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { aiApi } from '../../api/ai.api.js';
 import { Button } from '../../components/ui/Button.jsx';
 import { getErrorMessage } from '../../lib/errors.js';
-import { Sparkles, Send, AlertCircle, Quote, MapPin, Activity, Trash2, Copy, Check } from 'lucide-react';
+import { Bot, Send, AlertCircle, Quote, MapPin, Activity, Trash2, Copy, Check, Users } from 'lucide-react';
 
 const QUICK_PROMPTS = [
+  'Calculate the success rate',
   'How many orders are stuck right now?',
-  'Where are failures clustering?',
+  'Which couriers are overloaded?',
   'What is RTO and when does it happen?',
-  'Why is my order still CREATED?',
 ];
 
 function CopyButton({ text }) {
@@ -89,7 +89,7 @@ export function OpsCopilotPanel() {
       <div className="px-4 sm:px-5 py-3.5 border-b border-hairline flex items-center justify-between gap-3 bg-surface/60">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center">
-            <Sparkles className="w-4 h-4" />
+            <Bot className="w-4 h-4" />
           </div>
           <div>
             <div className="text-xs font-bold text-ink flex items-center gap-1.5">
@@ -157,8 +157,13 @@ export function OpsCopilotPanel() {
               {/* Live snapshot strip (ops only) */}
               {m.live && (
                 <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {m.live.successRate !== null && m.live.successRate !== undefined && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-success-soft text-success text-[11px] font-bold">
+                      <Activity className="w-3 h-3" /> {m.live.successRate}% success
+                    </span>
+                  )}
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-container-low hairline text-[11px] font-semibold text-ink">
-                    <Activity className="w-3 h-3" /> FAILED {m.live.stuckCount}
+                    FAILED {m.live.stuckCount}
                   </span>
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-container-low hairline text-[11px] font-semibold text-ink">
                     RTO {m.live.rtoCount}
@@ -166,11 +171,28 @@ export function OpsCopilotPanel() {
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-container-low hairline text-[11px] font-semibold text-ink">
                     CREATED {m.live.createdCount}
                   </span>
+                  {m.live.fleet && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-container-low hairline text-[11px] font-semibold text-ink">
+                      <Users className="w-3 h-3" /> {m.live.fleet.availableAgents}/{m.live.fleet.totalAgents} couriers
+                    </span>
+                  )}
                   {m.live.needsManualAttention > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-danger-soft text-danger text-[11px] font-bold">
                       <AlertCircle className="w-3 h-3" /> needs attention {m.live.needsManualAttention}
                     </span>
                   )}
+                </div>
+              )}
+
+              {/* Courier load (top agents) */}
+              {m.live?.courierLoad?.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {m.live.courierLoad.slice(0, 3).map((a) => (
+                    <div key={a.name} className="flex items-center justify-between text-[11px] text-ink-variant">
+                      <span className="truncate max-w-[180px] font-medium text-ink">{a.name}{a.isAvailable ? '' : ' (off-duty)'}</span>
+                      <span className="tabular">{a.active}{a.capacity ? `/${a.capacity}` : ''} active</span>
+                    </div>
+                  ))}
                 </div>
               )}
 

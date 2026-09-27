@@ -20,7 +20,7 @@ import {
   Compass,
   Tag,
   Power,
-  Sparkles,
+  Bot,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -103,7 +103,7 @@ export function Navbar() {
 
     return [
       { label: 'Overview', path: '/admin', icon: <LayoutDashboard className="w-4 h-4" /> },
-      { label: 'Ops Copilot', path: '/admin/ops', icon: <Sparkles className="w-4 h-4" /> },
+      { label: 'Ops Copilot', path: '/admin/ops', icon: <Bot className="w-4 h-4" /> },
       { label: 'All Shipments', path: '/admin/orders', icon: <Layers className="w-4 h-4" /> },
       { label: 'Dispatch Queue', path: '/admin/dispatch', icon: <Compass className="w-4 h-4" /> },
       { label: 'Agents & Fleet', path: '/admin/agents', icon: <Users className="w-4 h-4" /> },

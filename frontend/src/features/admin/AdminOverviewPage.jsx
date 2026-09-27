@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button.jsx';
 import { Skeleton } from '../../components/ui/Skeleton.jsx';
 import { formatCurrency, formatDateTime } from '../../lib/format.js';
 import { ORDER_STATUS } from '../../lib/constants.js';
-import { OpsCopilotPanel } from '../support/OpsCopilotPanel.jsx';
+import { OPEN_OPS_CHAT_EVENT } from '../support/OpsChat.jsx';
 import {
   Compass,
   Users,
@@ -21,6 +21,7 @@ import {
   RefreshCw,
   MapPin,
   Tag,
+  Bot,
 } from 'lucide-react';
 
 const IN_FLIGHT_STATUSES = new Set([
@@ -73,6 +74,10 @@ export function AdminOverviewPage() {
     refetchAgents();
   };
 
+  const handleAskCopilot = () => {
+    window.dispatchEvent(new CustomEvent(OPEN_OPS_CHAT_EVENT));
+  };
+
   const isLoading = isOrdersLoading || isAgentsLoading;
 
   return (
@@ -87,14 +92,24 @@ export function AdminOverviewPage() {
             </h1>
           </div>
 
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={handleRefreshAll}
-            leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-          >
-            Sync System KPIs
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={handleAskCopilot}
+              leftIcon={<Bot className="w-4 h-4" />}
+            >
+              Ask Ops Copilot
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={handleRefreshAll}
+              leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+            >
+              Sync System KPIs
+            </Button>
+          </div>
         </div>
 
         {/* 5 KPI Cards Grid */}
@@ -318,9 +333,6 @@ export function AdminOverviewPage() {
             </Link>
           </div>
         </div>
-
-        {/* Ops Copilot — Admin read-only, faq.md + live counts */}
-        <OpsCopilotPanel />
 
         {/* Live Recent Activity Stream Table */}
         <div className="bg-container-lowest hairline rounded-lg shadow-card overflow-hidden">

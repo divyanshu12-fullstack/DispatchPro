@@ -6,8 +6,12 @@ import { ApiError } from '../../utils/ApiError.js';
 import { answerCustomer, answerOps, retrieve } from '../services/ai.service.js';
 import { hasOpenRouterKey } from '../services/embeddings.service.js';
 import Order from '../../models/Order.js';
+import User from '../../models/User.js';
 
 const router = Router();
+
+// Matches waybill format LM-2026-000001 anywhere in the query text.
+const ORDER_NUMBER_RE = /\bLM-\d{4}-\d{4,6}\b/i;
 
 /**
  * POST /api/ai/chat — CUSTOMER (and ADMIN) RAG chat.
@@ -23,7 +27,13 @@ router.post(
   requireRole('CUSTOMER', 'ADMIN', 'AGENT'),
   asyncHandler(async (req, res) => {
     const query = String(req.body?.query ?? req.body?.q ?? '').trim();
-    const orderNumber = req.body?.orderNumber ? String(req.body.orderNumber).trim() : null;
+    // Explicit field wins; otherwise auto-extract LM-... from the query text
+    // ("where is my parcel LM-2026-000002?" works without a separate field).
+    let orderNumber = req.body?.orderNumber ? String(req.body.orderNumber).trim() : null;
+    if (!orderNumber) {
+      const m = query.match(ORDER_NUMBER_RE);
+      if (m) orderNumber = m[0].toUpperCase();
+    }
 
     if (!query || query.length < 2) throw ApiError.badRequest('query is required (2-500 chars)');
     if (query.length > 500) throw ApiError.badRequest('query too long (max 500 chars)');
@@ -87,7 +97,24 @@ router.post(
     const stuckCount = await Order.countDocuments({ currentStatus: 'FAILED' });
     const rtoCount = await Order.countDocuments({ currentStatus: 'RETURN_TO_ORIGIN' });
     const createdCount = await Order.countDocuments({ currentStatus: 'CREATED' });
+    const deliveredCount = await Order.countDocuments({ currentStatus: 'DELIVERED' });
+    const inFlightCount = await Order.countDocuments({
+      currentStatus: { $in: ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY'] },
+    });
     const needsAttention = await Order.countDocuments({ needsManualAttention: true });
+
+    // Success rate — catchy metric for the copilot: delivered vs completed outcomes.
+    const finished = deliveredCount + stuckCount + rtoCount;
+    const successRate = finished > 0 ? Math.round((deliveredCount / finished) * 1000) / 10 : null;
+
+    // Fleet + courier load ("who's overloaded") — top agents by active deliveries.
+    const totalAgents = await User.countDocuments({ role: 'AGENT' });
+    const availableAgents = await User.countDocuments({ role: 'AGENT', isAvailable: true });
+    const courierLoad = await User.find({ role: 'AGENT' })
+      .select('fullName currentActiveDeliveriesCount maxCapacity isAvailable assignedZoneId')
+      .sort({ currentActiveDeliveriesCount: -1 })
+      .limit(5)
+      .lean();
 
     // If query mentions a zone/pincode, try to scope (best-effort, not strict).
     const zoneHint = String(req.body?.zone || '').trim();
@@ -100,16 +127,33 @@ router.post(
       zoneNote = ` Orders matching zone/pincode '${zoneHint}': ${zoneScoped}.`;
     }
 
-    const liveNote = `Live ops snapshot: FAILED=${stuckCount}, RTO=${rtoCount}, CREATED(queued)=${createdCount}, needsManualAttention=${needsAttention}.${zoneNote} Sweep retries every 5 min up to 3 attempts.`;
-    // Inject liveNote by prepending to query context: answerOps will retrieve RAG and LLM will see liveNote as extra.
-    // Simplest: temporarily override by calling answerOps and then stitching liveNote into response header.
+    const loadNote = courierLoad.length
+      ? ` Top courier load: ${courierLoad.map((a) => `${a.fullName}: ${a.currentActiveDeliveriesCount ?? 0}${a.maxCapacity ? `/${a.maxCapacity}` : ''}${a.isAvailable ? '' : ' (off-duty)'}`).join(', ')}.`
+      : '';
+    const liveNote = `Live ops snapshot: FAILED=${stuckCount}, RTO=${rtoCount}, CREATED(queued)=${createdCount}, DELIVERED=${deliveredCount}, inFlight=${inFlightCount}, needsManualAttention=${needsAttention}${successRate !== null ? `, successRate=${successRate}%` : ''}. Fleet: ${availableAgents}/${totalAgents} couriers available.${zoneNote}${loadNote} Sweep retries every 5 min up to 3 attempts.`;
+    // Inject liveNote into the query so the LLM grounds on real numbers (tool-result style).
     const result = await answerOps(`${query}\n\n[Live snapshot for grounding, do not hallucinate beyond it: ${liveNote}]`);
 
     res.json({
       success: true,
       data: {
         answer: result.answer,
-        live: { stuckCount, rtoCount, createdCount, needsManualAttention: needsAttention },
+        live: {
+          stuckCount,
+          rtoCount,
+          createdCount,
+          deliveredCount,
+          inFlightCount,
+          needsManualAttention: needsAttention,
+          successRate,
+          fleet: { totalAgents, availableAgents },
+          courierLoad: courierLoad.map((a) => ({
+            name: a.fullName,
+            active: a.currentActiveDeliveriesCount ?? 0,
+            capacity: a.maxCapacity ?? null,
+            isAvailable: !!a.isAvailable,
+          })),
+        },
         sources: result.sources,
         model: result.model,
         ...(result.usage ? { usage: result.usage } : {}),
